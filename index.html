@@ -1162,6 +1162,17 @@ body::after{
   -webkit-mask-image:radial-gradient(ellipse 72% 100% at 50% 45%,#000 15%,rgba(0,0,0,.68) 62%,transparent 100%);
   mask-image:radial-gradient(ellipse 72% 100% at 50% 45%,#000 15%,rgba(0,0,0,.68) 62%,transparent 100%);
 }
+
+/* 左右边距：柔和模糊光晕，让中央手机画布“融”进深空，而不是硬切 */
+#frameFade{position:fixed;top:0;bottom:0;left:0;right:0;pointer-events:none;z-index:1;}
+#frameFade::before,#frameFade::after{
+  content:'';position:absolute;top:0;bottom:0;
+  width:max(0px,calc(50vw - 236px));
+  backdrop-filter:blur(12px) saturate(1.25);-webkit-backdrop-filter:blur(12px) saturate(1.25);
+}
+#frameFade::before{left:0;background:linear-gradient(90deg,rgba(2,6,12,.5),rgba(6,12,20,.25) 62%,rgba(6,12,20,0) 100%);}
+#frameFade::after{right:0;background:linear-gradient(270deg,rgba(2,6,12,.5),rgba(6,12,20,.25) 62%,rgba(6,12,20,0) 100%);}
+@media(max-width:540px){#frameFade{display:none;}}
 #starfield{
   inset:0;width:100vw;height:100%;opacity:.82;
 }
@@ -1175,6 +1186,7 @@ body::after{
 #cosmosGate{
   height:100vh;height:100svh;min-height:560px;
   border:0;
+  background:transparent; /* 让 body 的深空渐变直接透出，与正文背景完全统一 */
   box-shadow:0 0 100px 22px rgba(0,199,235,.07),0 0 220px 70px rgba(114,82,218,.035);
 }
 
@@ -1357,6 +1369,9 @@ body.in-story .navbar{display:block!important;}
 
 <!-- 星空背景 -->
 <canvas id="starfield"></canvas>
+
+<!-- 左右边距模糊光晕层（桌面端） -->
+<div id="frameFade"></div>
 
 <!-- 浮动金属贴图 -->
 <div class="metal-float mf-1"></div>
@@ -2274,13 +2289,19 @@ function openWorkHome(){
 var gateBusy=false;
 var gateTimer=null;
 // target: 'home' | 'social' | 'work' | 具体二级内容
-function gateExit(target){
+function gateExit(target,skipZoom){
   var gate=document.getElementById('cosmosGate');
   if(target==='home'){showGateHome();return;}
   if(gateBusy||gate.classList.contains('hidden')||gate.classList.contains('zooming'))return;
   gateBusy=true;
+  // 球体放大动画：先推进到中央地球近景，再白光切换（顶部三入口进入时）
+  if(skipZoom||!window.__gateZoom)doGateFlash(target);
+  else window.__gateZoom(function(){doGateFlash(target);});
+}
+// 白光闪完后再切（球体放大动画完成后的统一出口）
+function doGateFlash(target){
+  var gate=document.getElementById('cosmosGate');
   gate.classList.add('zooming');
-  // 白光闪完后再切
   gateTimer=setTimeout(function(){
     gateTimer=null;
     gate.classList.add('hidden');
@@ -2300,7 +2321,7 @@ function gateExit(target){
       case 'storyAchv': openStory(); setTimeout(function(){scrollStory('storyAchv');},200); break;
       case 'storySkill': openStory(); setTimeout(function(){scrollStory('storySkill');},200); break;
     }
-  },900);
+  },1050);
 }
 // 兼容旧调用：enterWorld 改为转 gateExit
 function enterWorld(which,fromMain){
@@ -2732,11 +2753,11 @@ document.addEventListener('click',function(e){
   var canvas=document.getElementById('cosmos3d');
   var renderer=new THREE.WebGLRenderer({canvas:canvas,antialias:true,alpha:true,powerPreference:'high-performance'});
   var scene=new THREE.Scene();
-  scene.background=new THREE.Color(0x04050a);
-  scene.fog=new THREE.FogExp2(0x04050a,0.010);
+  scene.background=null; // 透明：让 body 的深空渐变透出，宇宙门与正文背景完全统一
+  scene.fog=null;
   var camera=new THREE.PerspectiveCamera(42,1,0.1,2000); // 弱透视：接近正交的压缩空间
-  var cameraTarget=new THREE.Vector3(0,1.3,0); // 视线锚点略高于星球 → 星球构图落在标题下方
-  camera.position.set(0,1.1,35);
+  var cameraTarget=new THREE.Vector3(0,0.7,0); // 视线锚点：中央地球略偏上，轨道椭圆完整落入画面
+  camera.position.set(0,0.7,44);
   camera.lookAt(cameraTarget);
 
   var root=new THREE.Group();
@@ -2786,7 +2807,7 @@ document.addEventListener('click',function(e){
 
   // ---------- 状态 ----------
   var focus=null,dollying=false,hoverObj=null;
-  var camDist=35,camDistT=35; // 世界视图默认镜头距离：拉远构图，让中心星球成为主角
+  var camDist=44,camDistT=44; // 世界视图默认镜头距离：中央地球占屏约 1/3，轨道椭圆完整可见
   var speedK=1,speedTarget=1;
 
   // ---------- LEVEL 1 中央星球：XIRAN 数字天体（不规则形体 · 哑光雕塑 · 内嵌勇气图腾） ----------
@@ -2953,15 +2974,15 @@ document.addEventListener('click',function(e){
   var satLayer=new THREE.Group();
   root.add(satLayer);
   var rings=[],ringGroups=[];
-  // 近景构图：球心压到画面左下方，让地球只露出巨大的弧面与大气边缘
-  var earthAnchor=[-11.5,-7.4,0];
+  // 中央构图：实体地球放在画面正中（占屏约 1/3），四颗空心球沿小椭圆轨道公转，全程可见
+  var earthAnchor=[0,0,0];
   var satDefs=[
-    // 左下角的实体地球是视觉锚点；其余四颗空心球沿独立椭圆轨道经过
+    // 中央的实体地球是太阳系主星；其余四颗空心球沿各自椭圆轨道绕它公转
     {label:'真实的我',target:'social',       color:0xc8c8d4,structure:0x738394,energy:1.00,earth:true,center:true,anchor:true,pos:earthAnchor,secs:['音乐','乐队','影像','日常'],ava:'Musician · 音乐家'},
-    {label:'技能树',  target:'storySkill',   color:0xd6d9e4,structure:0x626b7c,energy:0.82,orbitRx:12.5,orbitRy:10.8,orbitZ:0.9,phase:0.72,speed:0.052,secs:['实习','能力','项目'],ava:'Learner · 学习者'},
-    {label:'专业的我',target:'work',         color:0x00e7ff,structure:0x176779,energy:0.95,orbitRx:16.5,orbitRy:13.5,orbitZ:1.3,phase:0.10,speed:0.040,secs:['AI','影像','教育','互联网'],ava:'AI Explorer · 探索者'},
-    {label:'人生地图',target:'storyThoughts',color:0x3979ff,structure:0x29477f,energy:0.88,orbitRx:20.5,orbitRy:16.2,orbitZ:1.7,phase:1.30,speed:0.032,secs:['阶段','选择','计划'],ava:'Adventurer · 冒险家'},
-    {label:'下一章',  target:'storyThoughts',color:0x9b7cff,structure:0x514278,energy:0.78,orbitRx:24.5,orbitRy:19.2,orbitZ:2.1,phase:0.65,speed:0.025,secs:['未来','生长','加载中'],ava:'Loading · 生长中'}
+    {label:'技能树',  target:'storySkill',   color:0xd6d9e4,structure:0x626b7c,energy:0.82,orbitRx:5.6,orbitRy:4.5,orbitZ:1.4,phase:0.72,speed:0.052,secs:['实习','能力','项目'],ava:'Learner · 学习者'},
+    {label:'专业的我',target:'work',         color:0x00e7ff,structure:0x176779,energy:0.95,orbitRx:6.3,orbitRy:5.1,orbitZ:1.7,phase:0.10,speed:0.040,secs:['AI','影像','教育','互联网'],ava:'AI Explorer · 探索者'},
+    {label:'人生地图',target:'storyThoughts',color:0x3979ff,structure:0x29477f,energy:0.88,orbitRx:7.0,orbitRy:5.7,orbitZ:2.0,phase:1.30,speed:0.032,secs:['阶段','选择','计划'],ava:'Adventurer · 冒险家'},
+    {label:'下一章',  target:'storyThoughts',color:0x9b7cff,structure:0x514278,energy:0.78,orbitRx:7.5,orbitRy:6.1,orbitZ:2.3,phase:0.65,speed:0.025,secs:['未来','生长','加载中'],ava:'Loading · 生长中'}
   ];
   var solarOrbitRoot=new THREE.Group();
   solarOrbitRoot.position.set(earthAnchor[0],earthAnchor[1],earthAnchor[2]);
@@ -2976,10 +2997,10 @@ document.addEventListener('click',function(e){
       pts.push(new THREE.Vector3(Math.cos(oa)*d.orbitRx,Math.sin(oa)*d.orbitRy,Math.sin(oa+0.35)*d.orbitZ));
     }
     var orbitGeo=new THREE.BufferGeometry().setFromPoints(pts);
-    var orbitMat=new THREE.LineDashedMaterial({color:d.structure,transparent:true,opacity:0.18,dashSize:0.65,gapSize:0.42,depthWrite:false,blending:THREE.AdditiveBlending});
+    var orbitMat=new THREE.LineDashedMaterial({color:d.structure,transparent:true,opacity:0.32,dashSize:0.5,gapSize:0.34,depthWrite:false,blending:THREE.AdditiveBlending});
     var orbitLine=new THREE.Line(orbitGeo,orbitMat);
     orbitLine.computeLineDistances();
-    orbitLine.userData.baseOpacity=0.18;
+    orbitLine.userData.baseOpacity=0.32;
     solarOrbitRoot.add(orbitLine);
     orbitTrails.push(orbitLine);
     var flowSprites=[];
@@ -3036,8 +3057,8 @@ document.addEventListener('click',function(e){
       g.position.set(Math.cos(d.orbitAngle)*d.orbitRx,Math.sin(d.orbitAngle)*d.orbitRy,Math.sin(d.orbitAngle+0.35)*d.orbitZ);
     }
     pivot.add(g);
-    // 大地球使用实体贴图；四颗导航球保持暗色空心全息结构
-    var nodeR=d.earth?7.2:1.45;
+    // 中央实体地球（占屏约 1/3）；四颗导航球保持暗色空心全息结构
+    var nodeR=d.earth?4.1:1.45;
     // 成熟的赛博朋克配色会分离“暗结构色”和“霓虹能量色”，避免整个球体一起发亮
     var structureColor=d.structure||d.color;
     var coreCol=new THREE.Color(structureColor).lerp(new THREE.Color(0x000706),0.9);
@@ -3139,12 +3160,12 @@ document.addEventListener('click',function(e){
     );
     rimS.renderOrder=2;
     g.add(rimS);
-    var gl=makeGlowSprite(d.color,d.earth?17.8:2.55,d.earth?0.22:0.28);
+    var gl=makeGlowSprite(d.color,d.earth?10.2:2.55,d.earth?0.22:0.28);
     g.add(gl);
     var fl=makeGlowSprite(0xffffff,d.earth?1.2:0.72,0);
     g.add(fl);
     // 点击热区（贴合可见星体，避免遮挡中央星球）
-    var hit=new THREE.Mesh(new THREE.SphereGeometry(d.earth?8.05:1.72,18,14),new THREE.MeshBasicMaterial({transparent:true,opacity:0,depthWrite:false}));
+    var hit=new THREE.Mesh(new THREE.SphereGeometry(d.earth?4.7:1.72,18,14),new THREE.MeshBasicMaterial({transparent:true,opacity:0,depthWrite:false}));
     hit.userData={type:'sat',index:i};
     g.add(hit);
     pickables.push(hit);
@@ -3154,31 +3175,36 @@ document.addEventListener('click',function(e){
     var secSprites=[];
     d.secs.forEach(function(_,sk){
       var a=sk/Math.max(1,d.secs.length)*Math.PI*2;
-      var miniRadius=d.earth?9.75:2.8;
+      var miniRadius=d.earth?5.55:2.8;
       var sp=makeGlowSprite(d.color,d.earth?0.58:0.5,0);
-      sp.position.set(Math.cos(a)*miniRadius,Math.sin(a*1.7)*(d.earth?3.2:1.25),Math.sin(a)*miniRadius);
+      sp.position.set(Math.cos(a)*miniRadius,Math.sin(a*1.7)*(d.earth?1.85:1.25),Math.sin(a)*miniRadius);
       secGroup.add(sp);
       secSprites.push(sp);
     });
     // LEVEL 4 居民 Avatar 占位（hover / 聚焦才出现，未来替换 3D 模型）
-    var ava=makeGlowSprite(0xfff2d8,d.earth?1.05:0.78,0);
-    ava.position.set(0,d.earth?9.8:2.9,0);
+    var ava=makeGlowSprite(0xfff2d8,d.earth?0.62:0.78,0);
+    ava.position.set(0,d.earth?5.6:2.9,0);
     g.add(ava);
-    var avaGlow=makeGlowSprite(d.color,d.earth?2.4:1.65,0);
+    var avaGlow=makeGlowSprite(d.color,d.earth?1.42:1.65,0);
     avaGlow.position.copy(ava.position);
     g.add(avaGlow);
-    // 电路连接：带折点的微型数据总线，持续可见并有电子脉冲流过
+    // 电路连接：带折点的微型数据总线，持续可见并有电子脉冲流过（中央地球自身无连接线）
     var endPoint=g.position.clone();
-    var sideOffset=new THREE.Vector3(-endPoint.y*0.055,endPoint.x*0.055,0);
-    var circuitCurve=new THREE.CatmullRomCurve3([
-      new THREE.Vector3(0,0,0),
-      endPoint.clone().multiplyScalar(0.22).add(sideOffset),
-      endPoint.clone().multiplyScalar(0.62).sub(sideOffset),
-      endPoint.clone()
-    ]);
-    // TubeGeometry 让电子连接线拥有真实厚度，不再是发丝一样的细线
-    var circuitGeo=new THREE.TubeGeometry(circuitCurve,32,0.06,6,false);
-    var lineMat=new THREE.MeshBasicMaterial({color:d.color,transparent:true,opacity:0.42,blending:THREE.AdditiveBlending,depthWrite:false});
+    var lineMat=null,circuitGeo=null;
+    if(!d.earth){
+      var sideOffset=new THREE.Vector3(-endPoint.y*0.055,endPoint.x*0.055,0);
+      var circuitCurve=new THREE.CatmullRomCurve3([
+        new THREE.Vector3(0,0,0),
+        endPoint.clone().multiplyScalar(0.22).add(sideOffset),
+        endPoint.clone().multiplyScalar(0.62).sub(sideOffset),
+        endPoint.clone()
+      ]);
+      // TubeGeometry 让电子连接线拥有真实厚度，不再是发丝一样的细线
+      circuitGeo=new THREE.TubeGeometry(circuitCurve,32,0.06,6,false);
+      lineMat=new THREE.MeshBasicMaterial({color:d.color,transparent:true,opacity:0.42,blending:THREE.AdditiveBlending,depthWrite:false});
+    }else{
+      lineMat={opacity:0};
+    }
     // 星球间不再使用硬连接线，改由上方的椭圆轨道表达太阳系关系
     // 数据流粒子：1 股（亮头 + 3 节拖尾），只在 hover / 聚焦时运行
     var flowSprites=[];
@@ -3245,16 +3271,17 @@ document.addEventListener('click',function(e){
     speedTarget=6;
     var dir=camera.position.clone().sub(wp);
     if(dir.lengthSq()<0.01)dir.set(0,0,1);else dir.normalize();
-    var approach=sats[i].userData.def.earth?16.5:8.0;
-    dollyCamera(wp.clone().add(dir.multiplyScalar(approach)),wp.clone(),1350,function(){
-      gateExit(sats[i].userData.def.target);
+    var approach=sats[i].userData.def.earth?9.2:4.6;
+    dollyCamera(wp.clone().add(dir.multiplyScalar(approach)),wp.clone(),1200,function(){
+      // 已经推进到星球近景，直接走白光切换，不再重复放大
+      if(window.__gateFlash)window.__gateFlash(sats[i].userData.def.target);
     });
   }
   function enterPlanet(){
     if(dollying||focus||gateBusy)return;
     focus={type:'planet'};
     speedTarget=3;
-    dollyCamera(new THREE.Vector3(0,0.4,9.5),new THREE.Vector3(0,0,0),1500,function(){
+    dollyCamera(new THREE.Vector3(0,0.4,11.5),new THREE.Vector3(0,0,0),1500,function(){
       document.getElementById('gateReveal').classList.add('open');
     });
   }
@@ -3262,26 +3289,32 @@ document.addEventListener('click',function(e){
     document.getElementById('gateReveal').classList.remove('open');
     focus=null;
     speedTarget=1;
-    var kk=Math.min(1,Math.max(0.5,gate.clientWidth/1100));
-    dollyCamera(new THREE.Vector3(0,1.2*kk,camDist*kk),new THREE.Vector3(0,1.3,0),1150);
+    dollyCamera(new THREE.Vector3(0,0.7,44),new THREE.Vector3(0,0.7,0),1150);
   }
   window.__gateReturn=exitPlanet;
   window.__gateReset=exitPlanet;
 
-  // ---------- Resize（FOV 自适应；镜头距离交给 tick 平滑） ----------
+  // 顶部三入口的「球体放大」过渡：把镜头推进到中央地球近景，再交给白光切换
+  window.__gateZoom=function(done){
+    if(focus||dollying){if(done)done();return;}
+    focus={type:'planet'};
+    speedTarget=3;
+    dollyCamera(new THREE.Vector3(0,0.5,12.6),new THREE.Vector3(0,0,0),640,function(){
+      setTimeout(function(){focus=null;speedTarget=1;if(done)done();},130);
+    });
+  };
+  window.__gateFlash=function(target){
+    if(typeof doGateFlash==='function')doGateFlash(target);
+  };
+
+  // ---------- Resize（手机画布固定弱透视；镜头距离交给 tick 平滑） ----------
   function resize(){
     var w=gate.clientWidth,h=gate.clientHeight;
     renderer.setSize(w,h,false);
     renderer.setPixelRatio(Math.min(window.devicePixelRatio||1,2));
     camera.aspect=w/h;
-    var k=Math.min(1,Math.max(0.5,w/1100));
-    if(k<1)camera.fov=42+(1-k)*55;else camera.fov=42;
-    if(!focus){
-      // 窄窗口也保留近景地球的压迫感，不让整套星系随面板一起缩得太小
-      satLayer.scale.setScalar(Math.max(0.82,k));
-      planetGroup.scale.setScalar(Math.min(1.12,k*1.5));
-      planetHit.scale.setScalar(Math.min(1.12,k*1.5));
-    }
+    // 画布宽度已被 --phone-frame 限死，固定 42° 弱透视保证地球占屏比例稳定
+    camera.fov=42;
     camera.updateProjectionMatrix();
   }
   window.addEventListener('resize',resize);
@@ -3376,7 +3409,7 @@ document.addEventListener('click',function(e){
   });
 
   // ---------- Render Loop：整体极慢，只让「被关注」的东西变亮 ----------
-  var baseCamPos=new THREE.Vector3(0,1.1,35);
+  var baseCamPos=new THREE.Vector3(0,0.7,44);
   var t0=performance.now(),lastT=0,orbitT=0,focusDim=0,planetGlow=0;
   var solarMotionK=1;
   function tick(){
@@ -3502,7 +3535,7 @@ document.addEventListener('click',function(e){
           seg.mat.opacity=scanOpacity*edgeFade*orbitPulse*particlePulse*seg.base;
         });
       });
-      var gs=ud.def.earth?(focusedThis?20.2:(hovered?19.2:17.4)):(focusedThis?5.4:(hovered?4.7:(satFocus?2.4:3.25)));
+      var gs=ud.def.earth?(focusedThis?11.4:(hovered?10.8:9.8)):(focusedThis?5.4:(hovered?4.7:(satFocus?2.4:3.25)));
       ud.glow.scale.x+=(gs-ud.glow.scale.x)*0.1;
       ud.glow.scale.y=ud.glow.scale.x;
       // LEVEL 3 二级节点
@@ -3523,7 +3556,7 @@ document.addEventListener('click',function(e){
       var af=ud.avaFade*Math.min(1,ud.fade*3);
       ud.avaMats[0].opacity=0.9*af;
       ud.avaMats[1].opacity=0.45*af;
-      ud.avaSp.position.y=(ud.def.earth?9.8:2.9)+Math.sin(t*0.001+ud.phase)*0.16;
+      ud.avaSp.position.y=(ud.def.earth?5.6:2.9)+Math.sin(t*0.001+ud.phase)*0.16;
       // 连接线 + 当前路径数据流
       var active=hovered||focusedThis;
       ud.linkMat.opacity=(0.28+(active?0.3:0))*(0.78+0.22*Math.sin(t*0.0006))*Math.min(1,ud.fade*3);
@@ -3544,10 +3577,9 @@ document.addEventListener('click',function(e){
         sp.material.opacity=(si===0?0.55:0.22-si*0.04)*(1-0.65*focusDim);
       });
     });
-    // 镜头：滚轮距离平滑 + 视差
+    // 镜头：固定世界视图（手机画布下不再缩放星系）
     if(!dollying&&!focus){
-      var kk=Math.min(1,Math.max(0.5,gate.clientWidth/1100));
-      baseCamPos.set(0,1.2*kk,camDist*kk);
+      baseCamPos.set(0,0.7,camDist);
       camera.position.x+=(baseCamPos.x-camera.position.x)*0.02;
       camera.position.y+=(baseCamPos.y-camera.position.y)*0.02;
       camera.position.z+=(baseCamPos.z-camera.position.z)*0.08;
