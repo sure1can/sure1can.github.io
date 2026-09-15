@@ -44,7 +44,9 @@ function analyze({ story = '', boundary = '', anchor = '固定锚点行为' } = 
     if (hasUnknown) unknowns.push(makeItem(unit, 'unknown', '这里确实缺少信息，未知不需要被想象填满。'));
     const observable = explicit || ACTION_WORDS.test(unit) || /\d|今天|昨天|前天|上午|下午|晚上|小时|分钟|几天|上周|本周/.test(unit);
     const canBeFact = explicit || observable;
-    if (canBeFact && !hasFuture && !hasOtherGuess && !hasSelfConclusion && !hasFeeling) {
+    if (explicit) {
+      facts.push(makeItem(unit, 'fact', '这是对方明确说出的原话，先按事实保留。', unit));
+    } else if (canBeFact && !hasFuture && !hasOtherGuess && !hasSelfConclusion && !hasFeeling) {
       facts.push(makeItem(factPart(unit), 'fact', '可以通过记录、聊天原话、金额、时间或可观察行为核对。', unit));
     } else if (canBeFact && (hasOtherGuess || hasSelfConclusion || hasFuture || hasFeeling)) {
       const clean = factPart(unit);

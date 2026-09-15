@@ -26,8 +26,9 @@ export function analyze(input = {}) {
     if (hasUnknown) unknowns.push(item(unit,'unknown','当前缺少可以确认它的信息。'));
     const observable=explicit||ACTION_WORDS.test(unit)||/\d|今天|昨天|前天|上午|下午|晚上|小时|分钟|几天|上周|本周/.test(unit);
     const clean=factPart(unit);
-    if ((observable||explicit) && !hasFuture&&!hasOther&&!hasSelf&&!hasFeeling) facts.push(item(clean,'fact','可由记录、原话、时间、金额或行为核对。',unit));
-    else if ((observable||explicit) && clean!==unit && !/可能|也许|会不会/.test(clean)) facts.push(item(clean,'fact','这是同一句中可单独核对的部分。',unit));
+    if (explicit) facts.push(item(unit,'fact','这是对方明确说出的原话，先按事实保留。',unit));
+    else if (observable && !hasFuture&&!hasOther&&!hasSelf&&!hasFeeling) facts.push(item(clean,'fact','可由记录、原话、时间、金额或行为核对。',unit));
+    else if (observable && clean!==unit && !/可能|也许|会不会/.test(clean)) facts.push(item(clean,'fact','这是同一句中可单独核对的部分。',unit));
   }
   if (!facts.length&&units.length) facts.push(item('目前没有足够具体的可核对事实。','fact','请补充时间、原话、金额、行为或结果。',text));
   if (!unknowns.length&&(others.length||future.length)) unknowns.push(item('对方真实想法和后续结果，目前都还未知。','unknown','没有新信息时，不把未知写成结论。'));
