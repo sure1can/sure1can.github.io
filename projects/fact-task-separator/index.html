@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#111827" />
+    <meta name="description" content="先分清发生了什么，再决定什么归你负责。" />
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='16' fill='%23111727'/%3E%3Cpath d='M18 19h28v9H27v8h15v8H27v10h-9V19Z' fill='%23a7f3d0'/%3E%3Ccircle cx='48' cy='46' r='7' fill='%23fbbf24'/%3E%3C/svg%3E" />
+    <title>事实与课题分离器</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <header class="topbar">
+        <div class="brand-lockup">
+          <div class="brand-mark" aria-hidden="true"><span>F</span><i></i></div>
+          <div><div class="brand-name">事实与课题分离器</div><div class="brand-note">个人思考工作台</div></div>
+        </div>
+        <div class="top-actions">
+          <button class="quiet-button" id="historyButton" type="button"><span class="button-icon">↺</span>历史案例 <span class="history-count" id="historyCount">0</span></button>
+          <button class="icon-button" id="settingsButton" type="button" aria-label="打开设置">⚙</button>
+        </div>
+      </header>
+
+      <main>
+        <section class="intro-row">
+          <div>
+            <p class="eyebrow">ONE EVENT / CLEARER EDGES</p>
+            <h1>先分清发生了什么，<br /><em>再决定什么归你负责。</em></h1>
+          </div>
+          <p class="intro-copy">把一整件混在一起的事原样放进来。<br />这里先找证据，不急着解释任何人。</p>
+        </section>
+
+        <section class="workspace-grid">
+          <div class="input-column">
+            <div class="panel input-panel">
+              <div class="panel-heading"><div><span class="step-number">01</span><h2>先把事情放下来</h2></div><span class="required-note">不需要整理</span></div>
+              <label class="sr-only" for="storyInput">把整件事情原样写下来</label>
+              <textarea id="storyInput" placeholder="把整件事情原样写下来，不需要整理。\n\n可以包含发生的事、你的感觉、你担心的结果，以及你已经做过的事。"></textarea>
+              <div class="input-footer"><span id="charCount">0 字</span><span>内容只保存在此设备</span></div>
+            </div>
+
+            <details class="panel fold-panel" id="boundaryPanel">
+              <summary><span class="summary-icon amber">⊘</span><span><strong>本次不要评价的前提</strong><small>告诉分析器哪些决定不需要被重新审判</small></span><span class="chevron">⌄</span></summary>
+              <textarea id="boundaryInput" class="small-textarea" placeholder="例如：我已经决定使用贷款存钱，请不要评价这个方案本身。"></textarea>
+            </details>
+            <details class="panel fold-panel" id="anchorPanel">
+              <summary><span class="summary-icon mint">＋</span><span><strong>我的固定锚点行为</strong><small>分析后会保留它，不会让你放弃或替换</small></span><span class="chevron">⌄</span></summary>
+              <input id="anchorInput" class="text-input" placeholder="例如：上课时背单词" />
+            </details>
+
+            <div class="privacy-note"><span class="lock-dot">⌁</span><span><strong>这是一个本地优先的 MVP</strong><br />设置和历史案例保存在浏览器中，不会自动发送到任何地方。</span></div>
+            <button class="primary-button" id="analyzeButton" type="button"><span>帮我拆开</span><b>→</b></button>
+            <div class="example-row"><span>不知道怎么开始？</span><button type="button" class="example-button" data-example="dad">试试一个例子：爸爸没回复</button></div>
+          </div>
+
+          <aside class="side-column">
+            <div class="principle-card"><div class="principle-kicker">CORE PRINCIPLE</div><p>你的情绪是真的，<br /><strong>让你产生情绪的最后那个结论，<br />目前不一定是真的。</strong></p><div class="principle-line"></div><span>先事实，后课题。</span></div>
+            <div class="legend-card"><div class="mini-heading">阅读标记</div><div class="legend-grid"><span><i class="legend-dot fact-dot"></i>事实</span><span><i class="legend-dot assumption-dot"></i>假设</span><span><i class="legend-dot other-dot"></i>他人课题</span><span><i class="legend-dot future-dot"></i>未来课题</span></div></div>
+          </aside>
+        </section>
+
+        <section class="results-section hidden" id="resultsSection">
+          <div class="results-header"><div><p class="eyebrow">READOUT / <span id="resultTime"></span></p><h2>先看现在最重要的几件事</h2></div><div class="result-tools"><button class="outline-button" id="newInfoButton" type="button">＋ 我有新信息了</button><button class="outline-button" id="clearButton" type="button">清空</button></div></div>
+          <div class="summary-grid" id="summaryGrid"></div>
+          <div class="stop-strip" id="stopStrip"></div>
+          <div class="detail-layout"><div class="detail-main" id="detailMain"></div><aside class="detail-aside" id="actionAside"></aside></div>
+        </section>
+      </main>
+      <footer class="footer"><span>事实与课题分离器 · v0.1 MVP</span><span>不替你做决定，只帮你看清边界。</span></footer>
+    </div>
+
+    <div class="modal-backdrop hidden" id="historyModal" role="dialog" aria-modal="true" aria-labelledby="historyTitle"><div class="modal"><div class="modal-header"><div><p class="eyebrow">LOCAL ARCHIVE</p><h2 id="historyTitle">历史案例</h2></div><button class="icon-button" data-close-modal="historyModal" aria-label="关闭">×</button></div><div id="historyList" class="history-list"></div></div></div>
+    <div class="modal-backdrop hidden" id="settingsModal" role="dialog" aria-modal="true" aria-labelledby="settingsTitle"><div class="modal settings-modal"><div class="modal-header"><div><p class="eyebrow">YOUR DEFAULTS</p><h2 id="settingsTitle">设置</h2></div><button class="icon-button" data-close-modal="settingsModal" aria-label="关闭">×</button></div><label for="defaultAnchor">默认固定锚点行为</label><input id="defaultAnchor" class="text-input" placeholder="例如：上课时背单词" /><p class="modal-hint">它会自动带入每次分析，并在结果中被明确保留。</p><button class="primary-button compact" id="saveSettingsButton" type="button">保存设置 <b>→</b></button></div></div>
+    <div class="toast hidden" id="toast" role="status"></div>
+    <script src="./app.js"></script>
+  </body>
+</html>
+
