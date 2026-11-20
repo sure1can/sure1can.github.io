@@ -236,7 +236,13 @@ input.title-in:focus,textarea.body-in:focus,textarea.tag-in:focus{border-color:v
 <body class="page-calendar">
 <div class="sidebar">
   <div class="sb-brand">
-    <div class="seal">農</div>
+    <div class="seal" title="写字">
+      <svg viewBox="0 0 32 32" width="26" height="26" fill="none" stroke="#fff" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M20 3.5 28.5 12 13.5 27 6 28l1-7.5z"/>
+        <path d="M14.5 9.5 23 18"/>
+        <path d="M4 30h12"/>
+      </svg>
+    </div>
     <div><h1>八字日历</h1><p>看八字 · 写心事</p></div>
   </div>
   <div class="nav">
@@ -260,7 +266,7 @@ input.title-in:focus,textarea.body-in:focus,textarea.tag-in:focus{border-color:v
   <!-- ============ 日历页 ============ -->
   <section class="page active" id="page-calendar">
     <div class="page-hd"><h2>日历</h2><p>农历黄历 · 今日宜忌</p></div>
-    <div class="card">
+    <div class="card" id="tagCard">
       <div class="card-hd"><h3>标签</h3><span class="sub">每年这一天都能看见，可增改</span></div>
       <div class="card-body">
         <div class="tag-banner" id="tagBanner">这一天的备注</div>
@@ -491,6 +497,12 @@ function switchPage(name){
   document.querySelectorAll('.nav-item').forEach(x=>x.classList.toggle('active',x.dataset.page===name));
   document.querySelectorAll('.page').forEach(p=>p.classList.toggle('active',p.id==='page-'+name));
   document.body.className='page-'+name;
+  // 标签卡片始终放在【日历】【日记】页开头
+  if(name==='calendar'||name==='diary'){
+    const target=$('page-'+name), hd=target.querySelector('.page-hd');
+    target.insertBefore($('tagCard'), hd.nextSibling);
+    renderTag();
+  }
   window.scrollTo({top:0,behavior:'smooth'});
 }
 document.querySelectorAll('.nav-item').forEach(x=>x.onclick=()=>switchPage(x.dataset.page));
