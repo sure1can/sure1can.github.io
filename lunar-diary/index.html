@@ -1,0 +1,681 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>农历日记 · 宜忌与心事</title>
+<script src="lunar.js"></script>
+<style>
+:root{
+  --bg:#f4eee2; --paper:#fffdf8; --paper2:#faf5e9;
+  --ink:#2c2620; --ink2:#6f6455; --ink3:#9c9080;
+  --line:#e6dac3; --line2:#d9c9a9;
+  --red:#b23a2e; --red-soft:#fbe9e4; --red-line:#ecc4b8;
+  --green:#2f7d55; --green-soft:#e6f2ea; --green-line:#bcdcc8;
+  --gold:#c39a34; --gold-soft:#faf1d8;
+  --shadow:0 10px 34px rgba(94,70,34,.09);
+  --radius:16px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%}
+body{
+  font-family:"PingFang SC","Microsoft YaHei","Hiragino Sans GB",sans-serif;
+  background:
+    radial-gradient(circle at 12% 8%, rgba(195,154,52,.10), transparent 38%),
+    radial-gradient(circle at 88% 92%, rgba(178,58,46,.07), transparent 42%),
+    var(--bg);
+  color:var(--ink); line-height:1.6; -webkit-font-smoothing:antialiased;
+  padding:22px 16px 60px;
+}
+.wrap{max-width:1180px;margin:0 auto}
+
+/* 顶部 */
+.topbar{display:flex;align-items:center;gap:16px;flex-wrap:wrap;margin-bottom:20px}
+.brand{display:flex;align-items:center;gap:13px;margin-right:auto}
+.seal{
+  width:52px;height:52px;border-radius:12px;flex:none;
+  background:linear-gradient(145deg,#b23a2e,#8f2c22);
+  color:#fff;display:grid;place-items:center;font-size:26px;font-weight:800;
+  box-shadow:0 6px 16px rgba(178,58,46,.28);letter-spacing:-2px;
+}
+.brand h1{font-size:23px;letter-spacing:2px;font-weight:800}
+.brand p{font-size:12.5px;color:var(--ink2);letter-spacing:.5px;margin-top:1px}
+.store-chip{
+  display:flex;align-items:center;gap:8px;font-size:12.5px;color:var(--ink2);
+  background:var(--paper);border:1px solid var(--line);border-radius:999px;
+  padding:8px 14px;box-shadow:var(--shadow);
+}
+.store-chip .dot{width:8px;height:8px;border-radius:50%;background:var(--ink3);flex:none}
+.store-chip.on .dot{background:var(--green);box-shadow:0 0 0 4px var(--green-soft)}
+.store-chip.on{color:var(--green);border-color:var(--green-line)}
+.btn{
+  font-family:inherit;font-size:13.5px;font-weight:600;cursor:pointer;
+  border:1px solid var(--line2);background:var(--paper);color:var(--ink);
+  padding:9px 16px;border-radius:10px;transition:.18s;white-space:nowrap;
+}
+.btn:hover{transform:translateY(-1px);box-shadow:0 6px 14px rgba(94,70,34,.12)}
+.btn.primary{background:var(--ink);color:#fff;border-color:var(--ink)}
+.btn.red{background:var(--red);color:#fff;border-color:var(--red)}
+.btn.sm{padding:6px 11px;font-size:12px;border-radius:8px}
+.btn:disabled{opacity:.5;cursor:not-allowed;transform:none}
+
+/* 提示条 */
+.tip{
+  display:flex;align-items:flex-start;gap:10px;font-size:12.8px;color:#7a5b1e;
+  background:var(--gold-soft);border:1px solid #ecd99b;border-radius:12px;
+  padding:10px 14px;margin-bottom:18px;
+}
+.tip b{color:#6b4d12}
+.tip .x{margin-left:auto;cursor:pointer;color:#a8893f;font-weight:700;padding:0 4px}
+
+/* 今日宜忌横幅 */
+.today-bar{
+  background:var(--paper);border:1px solid var(--line);border-radius:var(--radius);
+  box-shadow:var(--shadow);padding:15px 20px;margin-bottom:18px;
+  display:flex;align-items:center;gap:18px;flex-wrap:wrap;
+  position:relative;overflow:hidden;
+}
+.today-bar::before{
+  content:"";position:absolute;left:0;top:0;bottom:0;width:5px;
+  background:linear-gradient(180deg,var(--gold),var(--red));
+}
+.today-bar .lead{font-size:13px;color:var(--ink2);font-weight:700;letter-spacing:1px;flex:none}
+.today-bar .lead small{display:block;font-size:10.5px;color:var(--ink3);font-weight:400;letter-spacing:0}
+.yj-pair{display:flex;gap:12px;flex:1;flex-wrap:wrap;min-width:260px}
+.yj-box{
+  flex:1;min-width:180px;border-radius:11px;padding:9px 14px;
+  display:flex;gap:10px;align-items:baseline;
+}
+.yj-box.yi{background:var(--green-soft);border:1px solid var(--green-line)}
+.yj-box.ji{background:var(--red-soft);border:1px solid var(--red-line)}
+.yj-box .k{font-size:15px;font-weight:800;flex:none}
+.yj-box.yi .k{color:var(--green)} .yj-box.ji .k{color:var(--red)}
+.yj-box .v{font-size:12.8px;color:var(--ink);line-height:1.5}
+/* 农历视图：今日宜忌着重 */
+body.lunar-view .today-bar{
+  border-color:var(--red-line);
+  background:linear-gradient(100deg,#fff8f3,#fffdf8 60%);
+  padding:19px 22px;
+}
+body.lunar-view .today-bar .lead{font-size:14.5px;color:var(--red)}
+body.lunar-view .yj-box{padding:12px 16px}
+body.lunar-view .yj-box .k{font-size:19px}
+body.lunar-view .yj-box .v{font-size:14px;font-weight:600}
+
+/* 主体 */
+.main{display:grid;grid-template-columns:1.15fr .85fr;gap:18px;align-items:start}
+@media(max-width:920px){.main{grid-template-columns:1fr}}
+.card{
+  background:var(--paper);border:1px solid var(--line);border-radius:var(--radius);
+  box-shadow:var(--shadow);overflow:hidden;
+}
+.card-hd{
+  display:flex;align-items:center;gap:12px;padding:15px 18px;
+  border-bottom:1px solid var(--line);background:var(--paper2);
+}
+.card-hd h2{font-size:15px;font-weight:800;letter-spacing:.5px}
+.card-hd .sub{font-size:11.5px;color:var(--ink3);margin-left:2px}
+
+/* 视图切换 */
+.tabs{display:flex;background:#eee6d5;border-radius:10px;padding:3px;gap:3px}
+.tab{
+  font-family:inherit;font-size:12.5px;font-weight:700;color:var(--ink2);
+  border:0;background:transparent;padding:6px 15px;border-radius:8px;cursor:pointer;transition:.18s;
+}
+.tab.active{background:var(--paper);color:var(--ink);box-shadow:0 2px 8px rgba(94,70,34,.12)}
+
+/* 月份导航 */
+.month-nav{display:flex;align-items:center;gap:10px;margin-left:auto}
+.nav-btn{
+  width:30px;height:30px;border:1px solid var(--line);background:var(--paper);
+  border-radius:8px;cursor:pointer;color:var(--ink);font-size:15px;transition:.15s;
+}
+.nav-btn:hover{background:var(--paper2);border-color:var(--line2)}
+.month-label{font-size:14px;font-weight:800;min-width:132px;text-align:center}
+
+/* 日历 */
+.cal-body{padding:14px 16px 18px}
+.week-row{display:grid;grid-template-columns:repeat(7,1fr);margin-bottom:6px}
+.week-row span{text-align:center;font-size:11.5px;color:var(--ink3);font-weight:700;padding:5px 0}
+.week-row span.we{color:var(--red)}
+.grid{display:grid;grid-template-columns:repeat(7,1fr);gap:5px}
+.cell{
+  position:relative;min-height:62px;border:1px solid transparent;border-radius:9px;
+  padding:5px 4px 4px;cursor:pointer;transition:.15s;background:transparent;
+  display:flex;flex-direction:column;align-items:center;
+}
+.cell:hover{background:var(--paper2);border-color:var(--line)}
+.cell.out{opacity:.34}
+.cell.today{border-color:var(--red);background:var(--red-soft)}
+.cell.sel{box-shadow:inset 0 0 0 2px var(--gold);background:var(--gold-soft)}
+.cell .d{font-size:16px;font-weight:700;line-height:1.15}
+.cell .d.we{color:var(--red)}
+.cell .l{font-size:10px;color:var(--ink2);margin-top:2px;white-space:nowrap}
+.cell .l.fest{color:var(--red);font-weight:700}
+.cell .mark{
+  position:absolute;top:5px;right:6px;width:6px;height:6px;border-radius:50%;background:var(--gold);
+}
+/* 农历格子里的宜忌缩略 */
+.cell .mini{font-size:8.5px;line-height:1.35;margin-top:3px;width:100%;text-align:center;overflow:hidden}
+.cell .mini .my{color:var(--green)} .cell .mini .mj{color:var(--red)}
+body.lunar-view .cell{min-height:83px}
+
+/* 详情 */
+.detail-body{padding:18px 20px}
+.date-title{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;margin-bottom:3px}
+.date-title .big{font-size:26px;font-weight:800}
+.date-title .wk{font-size:14px;color:var(--red);font-weight:700}
+.date-sub{font-size:13px;color:var(--ink2);margin-bottom:4px}
+.date-tags{display:flex;gap:6px;flex-wrap:wrap;margin:9px 0 14px}
+.tag{font-size:11px;padding:3px 9px;border-radius:999px;background:var(--paper2);border:1px solid var(--line);color:var(--ink2)}
+.tag.gz{background:#f3ecdd;color:#7a5b1e;border-color:#e6d5aa}
+.tag.jq{background:var(--gold-soft);color:#8a6a16;border-color:#ecd99b}
+.tag.fest{background:var(--red-soft);color:var(--red);border-color:var(--red-line)}
+
+.detail-yj{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px}
+.dyj{border-radius:12px;padding:11px 13px;border:1px solid}
+.dyj.yi{background:var(--green-soft);border-color:var(--green-line)}
+.dyj.ji{background:var(--red-soft);border-color:var(--red-line)}
+.dyj h4{font-size:14px;margin-bottom:5px;display:flex;align-items:center;gap:6px}
+.dyj.yi h4{color:var(--green)} .dyj.ji h4{color:var(--red)}
+.dyj p{font-size:12.3px;color:var(--ink);line-height:1.6}
+body.lunar-view .dyj{padding:14px}
+body.lunar-view .dyj h4{font-size:16px}
+body.lunar-view .dyj p{font-size:13.5px;font-weight:600}
+
+.editor-hd{font-size:13px;font-weight:800;margin:6px 0 9px;display:flex;align-items:center;gap:8px}
+.editor-hd .save-state{font-size:11px;color:var(--ink3);font-weight:400;margin-left:auto}
+input.title-in,textarea.body-in{
+  width:100%;font-family:inherit;border:1px solid var(--line);border-radius:10px;
+  background:#fff;padding:10px 12px;font-size:13.5px;color:var(--ink);outline:none;transition:.15s;
+}
+input.title-in{font-weight:700;margin-bottom:8px}
+textarea.body-in{min-height:120px;resize:vertical;line-height:1.7}
+input.title-in:focus,textarea.body-in:focus{border-color:var(--gold);box-shadow:0 0 0 3px rgba(195,154,52,.12)}
+.editor-actions{display:flex;gap:8px;align-items:center;margin-top:10px}
+.editor-actions .hint{font-size:11px;color:var(--ink3);margin-left:auto}
+
+/* 底部回顾 */
+.review{margin-top:18px;display:grid;grid-template-columns:1fr 1fr;gap:18px}
+@media(max-width:920px){.review{grid-template-columns:1fr}}
+.review-body{padding:16px 18px}
+.ly-box{background:var(--paper2);border:1px dashed var(--line2);border-radius:12px;padding:13px 15px;min-height:96px}
+.ly-head{font-size:12px;color:var(--ink2);margin-bottom:7px;display:flex;align-items:center;gap:8px}
+.ly-head .yr{font-weight:800;color:var(--ink)}
+.ly-title{font-size:14px;font-weight:700;margin-bottom:4px}
+.ly-text{font-size:12px;color:var(--ink2);line-height:1.6;max-height:56px;overflow:hidden}
+.empty{font-size:12px;color:var(--ink3);font-style:italic}
+.list{display:flex;flex-direction:column;gap:6px;max-height:180px;overflow:auto}
+.list-item{
+  display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:9px;
+  background:var(--paper2);border:1px solid var(--line);cursor:pointer;transition:.15s;
+}
+.list-item:hover{border-color:var(--gold);background:var(--gold-soft)}
+.list-item .dt{font-size:11px;color:var(--ink3);flex:none;width:76px}
+.list-item .ti{font-size:12.5px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
+/* 弹层 */
+.mask{position:fixed;inset:0;background:rgba(44,38,32,.42);display:none;place-items:center;z-index:50;padding:20px}
+.mask.show{display:grid}
+.modal{background:var(--paper);border-radius:18px;max-width:460px;width:100%;padding:26px 26px 22px;box-shadow:0 24px 60px rgba(0,0,0,.2)}
+.modal h3{font-size:18px;margin-bottom:10px}
+.modal p{font-size:13px;color:var(--ink2);line-height:1.8;margin-bottom:16px}
+.modal code{background:var(--paper2);padding:2px 7px;border-radius:5px;font-size:12px;color:var(--red)}
+.modal .row{display:flex;gap:8px;justify-content:flex-end}
+
+.foot{text-align:center;font-size:11px;color:var(--ink3);margin-top:30px;line-height:1.8}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="topbar">
+    <div class="brand">
+      <div class="seal">農</div>
+      <div><h1>农历日记</h1><p>看黄历宜忌 · 写自己的心事</p></div>
+    </div>
+    <div class="store-chip" id="storeChip"><span class="dot"></span><span id="storeText">未连接存储</span></div>
+    <button class="btn primary" id="connectBtn">连接我的 D 盘文件夹</button>
+  </div>
+
+  <div class="tip" id="tip">
+    <span>📁</span>
+    <div id="tipText"><b>存哪里：</b>点右上角按钮，选一个 D 盘的文件夹（例如 <code>D:\我的日记</code>）。日记会写成文件存在那里，<b>只属于这台电脑，换电脑就没有了</b>。网页只负责显示，不上传你的日记。</div>
+    <span class="x" id="tipX">×</span>
+  </div>
+
+  <div class="today-bar">
+    <div class="lead">今日宜忌<small id="todayDate">—</small></div>
+    <div class="yj-pair">
+      <div class="yj-box yi"><span class="k">宜</span><span class="v" id="todayYi">—</span></div>
+      <div class="yj-box ji"><span class="k">忌</span><span class="v" id="todayJi">—</span></div>
+    </div>
+  </div>
+
+  <div class="main">
+    <!-- 日历 -->
+    <section class="card">
+      <div class="card-hd">
+        <h2>日历</h2>
+        <div class="tabs">
+          <button class="tab active" data-v="solar">公历</button>
+          <button class="tab" data-v="lunar">农历</button>
+        </div>
+        <div class="month-nav">
+          <button class="nav-btn" id="prevM">‹</button>
+          <span class="month-label" id="monthLabel">—</span>
+          <button class="nav-btn" id="nextM">›</button>
+        </div>
+      </div>
+      <div class="cal-body">
+        <div class="week-row">
+          <span class="we">日</span><span>一</span><span>二</span><span>三</span><span>四</span><span>五</span><span class="we">六</span>
+        </div>
+        <div class="grid" id="grid"></div>
+      </div>
+    </section>
+
+    <!-- 详情 -->
+    <section class="card">
+      <div class="card-hd"><h2>这一天</h2><span class="sub" id="detailSub">点日历上的日期查看</span></div>
+      <div class="detail-body">
+        <div class="date-title"><span class="big" id="dBig">—</span><span class="wk" id="dWk"></span></div>
+        <div class="date-sub" id="dSub"></div>
+        <div class="date-tags" id="dTags"></div>
+
+        <div class="detail-yj">
+          <div class="dyj yi"><h4>宜 · 可以做</h4><p id="dYi">—</p></div>
+          <div class="dyj ji"><h4>忌 · 不宜做</h4><p id="dJi">—</p></div>
+        </div>
+
+        <div class="editor-hd">✍️ 我写下的日记<span class="save-state" id="saveState"></span></div>
+        <input class="title-in" id="inTitle" placeholder="给这天起个标题…" maxlength="60">
+        <textarea class="body-in" id="inBody" placeholder="今天发生了什么？想到什么就写什么…"></textarea>
+        <div class="editor-actions">
+          <button class="btn red" id="saveBtn">保存这一天</button>
+          <button class="btn sm" id="delBtn">删除</button>
+          <span class="hint" id="editHint">自动带出已保存的内容</span>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <!-- 回顾 -->
+  <div class="review">
+    <section class="card">
+      <div class="card-hd"><h2>去年今日</h2><button class="btn sm" id="lyGo" style="margin-left:auto">跳到那天 →</button></div>
+      <div class="review-body"><div class="ly-box" id="lyBox"></div></div>
+    </section>
+    <section class="card">
+      <div class="card-hd"><h2>我的日记</h2><span class="sub" id="listCount"></span></div>
+      <div class="review-body"><div class="list" id="list"></div></div>
+    </section>
+  </div>
+
+  <div class="foot">农历依据传统黄历推算，宜忌仅供民俗参考。<br>你的日记只存在自己的电脑里，本网页不会上传、也不会保存任何内容到服务器。</div>
+</div>
+
+<div class="mask" id="mask">
+  <div class="modal">
+    <h3>浏览器不支持文件夹保存</h3>
+    <p id="modalText">当前浏览器无法把日记直接写进 D 盘文件夹。请改用电脑版 <b>Edge</b> 或 <b>Chrome</b> 浏览器打开这个网页，然后点击右上角「连接我的 D 盘文件夹」。</p>
+    <div class="row"><button class="btn primary" id="modalClose">知道了</button></div>
+  </div>
+</div>
+
+<script>
+/* ========== 工具 ========== */
+const $ = id => document.getElementById(id);
+const pad = n => String(n).padStart(2,'0');
+function keyOf(d){return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate());}
+function parseKey(k){const [y,m,d]=k.split('-').map(Number);return new Date(y,m-1,d);}
+function sameDay(a,b){return a.getFullYear()===b.getFullYear()&&a.getMonth()===b.getMonth()&&a.getDate()===b.getDate();}
+function weekCN(d){return '星期'+'日一二三四五六'[d.getDay()];}
+const WEEK=['日','一','二','三','四','五','六'];
+
+/* ========== 状态 ========== */
+const today = new Date(); today.setHours(0,0,0,0);
+const state = {
+  view:'solar',
+  anchor:new Date(today),   // 当前查看的公历锚点
+  selected:keyOf(today),
+  dirHandle:null,
+  savedHandle:null,         // 上次连接的文件夹句柄（从 IndexedDB 恢复）
+  usingFolder:false,
+  index:{},                 // key -> {title, updatedAt}
+  cache:{}
+};
+
+/* ========== 存储层：优先 D 盘文件夹，降级 localStorage ========== */
+const LS_KEY='nongli_diary_fallback';
+function lsLoad(){try{return JSON.parse(localStorage.getItem(LS_KEY)||'{}');}catch(e){return {};}}
+function lsSave(obj){localStorage.setItem(LS_KEY,JSON.stringify(obj));}
+
+function openDB(){return new Promise((res,rej)=>{
+  const r=indexedDB.open('nongli_diary',1);
+  r.onupgradeneeded=()=>r.result.createObjectStore('kv');
+  r.onsuccess=()=>res(r.result); r.onerror=()=>rej(r.error);
+});}
+async function dbPut(k,v){const db=await openDB();return new Promise((res,rej)=>{
+  const t=db.transaction('kv','readwrite');t.objectStore('kv').put(v,k);
+  t.oncomplete=res;t.onerror=()=>rej(t.error);});}
+async function dbGet(k){const db=await openDB();return new Promise((res,rej)=>{
+  const t=db.transaction('kv','readonly');const q=t.objectStore('kv').get(k);
+  q.onsuccess=()=>res(q.result);q.onerror=()=>rej(q.error);});}
+
+async function connectFolder(){
+  // 未连接且有保存的文件夹：只需用户点一下恢复授权（必须手势触发）
+  // 已连接时点按钮则走到下方 showDirectoryPicker，实现「更换文件夹」
+  if(!state.usingFolder && state.savedHandle){
+    try{
+      let p=await state.savedHandle.queryPermission({mode:'readwrite'});
+      if(p!=='granted') p=await state.savedHandle.requestPermission({mode:'readwrite'});
+      if(p==='granted'){
+        state.dirHandle=state.savedHandle;state.usingFolder=true;
+        setStoreOn(state.savedHandle.name);await rebuildIndex();renderAll();return;
+      }
+    }catch(e){}
+  }
+  if(!window.showDirectoryPicker){$('mask').classList.add('show');return;}
+  try{
+    const h=await window.showDirectoryPicker({mode:'readwrite'});
+    state.dirHandle=h; state.usingFolder=true; state.savedHandle=h;
+    await dbPut('dirHandle',h);
+    // 迁移：把降级数据写进文件夹
+    const fb=lsLoad();
+    for(const k of Object.keys(fb)){await writeDiary(k,fb[k]);}
+    if(Object.keys(fb).length) localStorage.removeItem(LS_KEY);
+    setStoreOn(h.name);
+    await rebuildIndex();
+    renderAll();
+  }catch(e){ if(e&&e.name!=='AbortError') alert('连接失败：'+e.message); }
+}
+
+async function restoreFolder(){
+  try{
+    const h=await dbGet('dirHandle'); if(!h)return;
+    state.savedHandle=h;
+    let p=await h.queryPermission({mode:'readwrite'});
+    if(p==='granted'){
+      state.dirHandle=h;state.usingFolder=true;setStoreOn(h.name);await rebuildIndex();renderAll();
+    }else{
+      // 需要用户手势才能恢复，改为引导文案，等用户点按钮
+      $('connectBtn').textContent='重新连接上次文件夹';
+      $('storeText').textContent='等待重新连接';
+    }
+  }catch(e){}
+}
+function setStoreOn(name){
+  $('storeChip').classList.add('on');
+  $('storeText').textContent='已连接：'+name;
+  $('connectBtn').textContent='更换文件夹';
+  $('tip').style.display='none';
+}
+
+async function writeDiary(k,data){
+  if(state.usingFolder&&state.dirHandle){
+    const fh=await state.dirHandle.getFileHandle(k+'.json',{create:true});
+    const w=await fh.createWritable();
+    await w.write(JSON.stringify({title:data.title||'',body:data.body||'',updatedAt:new Date().toISOString()}));
+    await w.close();
+  }else{
+    const all=lsLoad();all[k]={title:data.title||'',body:data.body||'',updatedAt:new Date().toISOString()};lsSave(all);
+  }
+  state.index[k]={title:data.title||'',updatedAt:new Date().toISOString()};
+  state.cache[k]={title:data.title||'',body:data.body||''};
+  if(!state.usingFolder) $('storeChip').classList.remove('on');
+}
+async function readDiary(k){
+  if(state.cache[k])return state.cache[k];
+  let data=null;
+  if(state.usingFolder&&state.dirHandle){
+    try{const fh=await state.dirHandle.getFileHandle(k+'.json');data=JSON.parse(await (await fh.getFile()).text());}catch(e){}
+  }else{data=lsLoad()[k]||null;}
+  if(data)state.cache[k]=data;
+  return data;
+}
+async function deleteDiary(k){
+  if(state.usingFolder&&state.dirHandle){
+    try{await state.dirHandle.removeEntry(k+'.json');}catch(e){}
+  }else{const all=lsLoad();delete all[k];lsSave(all);}
+  delete state.cache[k];delete state.index[k];
+}
+async function rebuildIndex(){
+  state.index={};state.cache={};
+  if(state.usingFolder&&state.dirHandle){
+    for await(const [name] of state.dirHandle.entries()){
+      if(name.endsWith('.json')){
+        const k=name.slice(0,-5);
+        try{const d=JSON.parse(await (await (await state.dirHandle.getFileHandle(name)).getFile()).text());
+          state.index[k]={title:d.title||'',updatedAt:d.updatedAt};state.cache[k]=d;}catch(e){}
+      }
+    }
+  }else{
+    const all=lsLoad();
+    for(const k of Object.keys(all))state.index[k]={title:all[k].title||'',updatedAt:all[k].updatedAt};
+  }
+}
+
+/* ========== 黄历 ========== */
+function lunarOf(d){return Lunar.fromDate(d);}
+function yiOf(l){return l.getDayYi()||[];}
+function jiOf(l){return l.getDayJi()||[];}
+function joinItems(arr,n){if(!arr.length)return '—';const s=arr.slice(0,n).join('、');return arr.length>n?s+' 等':s;}
+
+/* ========== 渲染：今日宜忌 ========== */
+function renderToday(){
+  const l=lunarOf(today);
+  $('todayDate').textContent=(today.getMonth()+1)+'月'+today.getDate()+'日 · '+l.getMonthInChinese()+'月'+l.getDayInChinese();
+  $('todayYi').textContent=joinItems(yiOf(l),7);
+  $('todayJi').textContent=joinItems(jiOf(l),7);
+}
+
+/* ========== 渲染：日历 ========== */
+function lunarCursorInfo(d){
+  const l=lunarOf(d);
+  return {y:l.getYear(),m:Math.abs(l.getMonth()),leap:l.getMonth()<0};
+}
+function cnMonthName(m){
+  const s=['','一','二','三','四','五','六','七','八','九','十','冬','腊'];
+  return s[m]||m;
+}
+function monthTitle(){
+  if(state.view==='solar'){
+    return state.anchor.getFullYear()+'年 '+(state.anchor.getMonth()+1)+'月';
+  }else{
+    const c=lunarCursorInfo(state.anchor);
+    return c.y+'年 '+(c.leap?'闰':'')+cnMonthName(c.m)+'月';
+  }
+}
+function buildSolarCells(){
+  const y=state.anchor.getFullYear(),m=state.anchor.getMonth();
+  const first=new Date(y,m,1), startDow=first.getDay();
+  const start=new Date(y,m,1-startDow);
+  const cells=[];
+  for(let i=0;i<42;i++){
+    const d=new Date(start.getFullYear(),start.getMonth(),start.getDate()+i);
+    cells.push({d,out:d.getMonth()!==m});
+  }
+  return cells;
+}
+function buildLunarCells(){
+  const c=lunarCursorInfo(state.anchor);
+  const lm=LunarMonth.fromYm(c.y,c.m,c.leap);
+  const days=lm.getDayCount();
+  const fs=Solar.fromJulianDay(lm.getFirstJulianDay());
+  const first=new Date(fs.getYear(),fs.getMonth()-1,fs.getDay());
+  const startDow=first.getDay();
+  const start=new Date(first.getFullYear(),first.getMonth(),first.getDate()-startDow);
+  const total=Math.ceil((startDow+days)/7)*7;
+  const cells=[];
+  for(let i=0;i<total;i++){
+    const d=new Date(start.getFullYear(),start.getMonth(),start.getDate()+i);
+    const dl=lunarOf(d);
+    const cc=lunarCursorInfo(d);
+    const out=!(cc.y===c.y&&cc.m===c.m&&cc.leap===c.leap);
+    cells.push({d,out});
+  }
+  return cells;
+}
+function renderGrid(){
+  const grid=$('grid');grid.innerHTML='';
+  const cells=state.view==='solar'?buildSolarCells():buildLunarCells();
+  for(const {d,out} of cells){
+    const k=keyOf(d), l=lunarOf(d);
+    const el=document.createElement('div');
+    el.className='cell'+(out?' out':'')+(sameDay(d,today)?' today':'')+(k===state.selected?' sel':'');
+    const dow=d.getDay();
+    const dEl=document.createElement('div');
+    dEl.className='d'+(dow===0||dow===6?' we':'');
+    dEl.textContent=state.view==='solar'?d.getDate():l.getDayInChinese().replace('十','十');
+    el.appendChild(dEl);
+
+    const lEl=document.createElement('div');
+    const festivals=l.getFestivals()||[];
+    const jq=l.getJieQi();
+    let ltext=state.view==='solar'?l.getMonthInChinese()+'月'+l.getDayInChinese():(d.getMonth()+1)+'/'+d.getDate();
+    let isFest=false;
+    if(state.view==='solar'){
+      if(jq){ltext=jq;isFest=true;}
+      else if(festivals.length){ltext=festivals[0];isFest=true;}
+      else if(l.getDay()===1){ltext=l.getMonthInChinese()+'月';}
+    }else{
+      if(jq){ltext=jq+' · '+(d.getMonth()+1)+'/'+d.getDate();isFest=true;}
+      else if(festivals.length){ltext=festivals[0]+' · '+(d.getMonth()+1)+'/'+d.getDate();isFest=true;}
+    }
+    lEl.className='l'+(isFest?' fest':'');
+    lEl.textContent=ltext;
+    el.appendChild(lEl);
+
+    if(state.view==='lunar'&&!out){
+      const mini=document.createElement('div');mini.className='mini';
+      const yi=yiOf(l),ji=jiOf(l);
+      mini.innerHTML='<div class="my">宜 '+joinItems(yi,2)+'</div><div class="mj">忌 '+joinItems(ji,2)+'</div>';
+      el.appendChild(mini);
+    }
+    if(state.index[k]){const mk=document.createElement('span');mk.className='mark';el.appendChild(mk);}
+    el.onclick=()=>selectDate(k);
+    grid.appendChild(el);
+  }
+  $('monthLabel').textContent=monthTitle();
+}
+
+/* ========== 渲染：详情 ========== */
+async function selectDate(k){
+  state.selected=k;
+  renderGrid();
+  await renderDetail();
+  renderLastYear();
+}
+async function renderDetail(){
+  const d=parseKey(state.selected), l=lunarOf(d);
+  $('detailSub').textContent=keyOf(d)+' 的记录';
+  $('dBig').textContent=(d.getMonth()+1)+'月'+d.getDate()+'日';
+  $('dWk').textContent=weekCN(d);
+  $('dSub').textContent=l.getYear()+'年（'+l.getYearShengXiao()+'年）农历 '+l.getMonthInChinese()+'月'+l.getDayInChinese();
+
+  const tags=[];
+  tags.push('<span class="tag gz">'+l.getYearInGanZhi()+'年 · '+l.getMonthInGanZhi()+'月 · '+l.getDayInGanZhi()+'日</span>');
+  const jq=l.getJieQi(); if(jq)tags.push('<span class="tag jq">节气 · '+jq+'</span>');
+  (l.getFestivals()||[]).forEach(f=>tags.push('<span class="tag fest">'+f+'</span>'));
+  $('dTags').innerHTML=tags.join('');
+  $('dYi').textContent=joinItems(yiOf(l),12);
+  $('dJi').textContent=joinItems(jiOf(l),12);
+
+  const data=await readDiary(state.selected);
+  $('inTitle').value=data?data.title||'':'';
+  $('inBody').value=data?data.body||'':'';
+  $('saveState').textContent=data&&data.updatedAt?('保存于 '+new Date(data.updatedAt).toLocaleString('zh-CN',{hour12:false})):'';
+}
+
+/* ========== 去年今日 ========== */
+function lastYearKey(k){
+  const d=parseKey(k), y=d.getFullYear()-1, m=d.getMonth(), day=d.getDate();
+  const max=new Date(y,m+1,0).getDate();
+  return keyOf(new Date(y,m,Math.min(day,max)));
+}
+async function renderLastYear(){
+  const k=lastYearKey(state.selected), d=parseKey(k);
+  const data=await readDiary(k);
+  if(data&&(data.title||data.body)){
+    $('lyBox').innerHTML='<div class="ly-head"><span class="yr">'+(d.getFullYear())+'年'+(d.getMonth()+1)+'月'+d.getDate()+'日</span><span>· 那天你写下</span></div>'+
+      '<div class="ly-title">'+(data.title||'（无标题）')+'</div><div class="ly-text">'+(data.body||'').replace(/</g,'&lt;')+'</div>';
+  }else{
+    $('lyBox').innerHTML='<div class="ly-head"><span class="yr">'+(d.getFullYear())+'年'+(d.getMonth()+1)+'月'+d.getDate()+'日</span></div>'+
+      '<div class="empty">那天还没有留下日记。那一天也值得被记住。</div>';
+  }
+  $('lyGo').onclick=()=>{state.anchor=d;selectDate(k);};
+}
+function renderList(){
+  const arr=Object.keys(state.index).sort((a,b)=>b.localeCompare(a));
+  $('listCount').textContent=arr.length+' 篇';
+  if(!arr.length){$('list').innerHTML='<div class="empty">还没有日记。选一天，写下第一篇吧。</div>';return;}
+  $('list').innerHTML=arr.map(k=>{
+    const d=parseKey(k);
+    return '<div class="list-item" data-k="'+k+'"><span class="dt">'+(d.getFullYear()%100)+'/'+pad(d.getMonth()+1)+'/'+pad(d.getDate())+'</span>'+
+      '<span class="ti">'+(state.index[k].title||'（无标题）')+'</span></div>';
+  }).join('');
+  $('list').querySelectorAll('.list-item').forEach(el=>el.onclick=()=>{
+    const k=el.dataset.k;state.anchor=parseKey(k);selectDate(k);
+  });
+}
+function renderAll(){renderToday();renderGrid();renderDetail();renderLastYear();renderList();}
+
+/* ========== 事件 ========== */
+document.querySelectorAll('.tab').forEach(t=>t.onclick=()=>{
+  state.view=t.dataset.v;
+  document.querySelectorAll('.tab').forEach(x=>x.classList.toggle('active',x===t));
+  document.body.classList.toggle('lunar-view',state.view==='lunar');
+  renderGrid();
+});
+$('prevM').onclick=()=>shiftMonth(-1);
+$('nextM').onclick=()=>shiftMonth(1);
+function shiftMonth(delta){
+  if(state.view==='solar'){
+    state.anchor=new Date(state.anchor.getFullYear(),state.anchor.getMonth()+delta,1);
+  }else{
+    const c=lunarCursorInfo(state.anchor);
+    const lm=LunarMonth.fromYm(c.y,c.m,c.leap);
+    const fs=Solar.fromJulianDay(lm.getFirstJulianDay());
+    const off=delta>0?lm.getDayCount()+3:-3;
+    state.anchor=new Date(fs.getYear(),fs.getMonth()-1,fs.getDay()+off);
+  }
+  renderGrid();
+}
+$('saveBtn').onclick=async()=>{
+  const title=$('inTitle').value.trim(), body=$('inBody').value;
+  if(!title&&!body.trim()){alert('还没写内容呢。');return;}
+  await writeDiary(state.selected,{title,body});
+  $('saveState').textContent='刚刚保存';
+  renderGrid();renderList();
+};
+$('delBtn').onclick=async()=>{
+  if(!state.index[state.selected]){alert('这一天还没有日记。');return;}
+  if(!confirm('确定删除这一天的日记吗？删除后无法恢复。'))return;
+  await deleteDiary(state.selected);
+  $('inTitle').value='';$('inBody').value='';$('saveState').textContent='';
+  renderGrid();renderLastYear();renderList();
+};
+$('connectBtn').onclick=connectFolder;
+$('modalClose').onclick=()=>$('mask').classList.remove('show');
+$('tipX').onclick=()=>$('tip').style.display='none';
+
+/* ========== 启动（等待黄历库加载） ========== */
+function whenReady(cb,tries){
+  tries=tries||0;
+  if(typeof Lunar!=='undefined'){cb();return;}
+  if(tries>100){ // 约 10 秒后放弃
+    document.getElementById('todayYi').textContent='黄历数据加载失败，请刷新页面重试';
+    document.getElementById('todayJi').textContent='（需要联网加载黄历数据）';
+    return;
+  }
+  setTimeout(function(){whenReady(cb,tries+1);},100);
+}
+whenReady(async function init(){
+  renderToday();renderGrid();await renderDetail();renderLastYear();renderList();
+  await rebuildIndex();renderGrid();renderList();
+  await restoreFolder();
+});
+</script>
+</body>
+</html>
