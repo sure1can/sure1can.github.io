@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>农历日记 · 宜忌与心事</title>
+<title>八字日历 · 宜忌与心事</title>
 <script src="lunar.js"></script>
 <style>
 :root{
@@ -237,7 +237,7 @@ input.title-in:focus,textarea.body-in:focus,textarea.tag-in:focus{border-color:v
 <div class="sidebar">
   <div class="sb-brand">
     <div class="seal">農</div>
-    <div><h1>农历日记</h1><p>看黄历 · 写心事</p></div>
+    <div><h1>八字日历</h1><p>看八字 · 写心事</p></div>
   </div>
   <div class="nav">
     <button class="nav-item active" data-page="calendar"><span class="ico">📅</span>日历</button>
@@ -246,7 +246,7 @@ input.title-in:focus,textarea.body-in:focus,textarea.tag-in:focus{border-color:v
   </div>
   <div class="sb-spacer"></div>
   <div class="sb-store" id="storeBox"><span class="dot"></span><span id="storeText">未连接存储</span></div>
-  <button class="sb-connect" id="connectBtn">连接我的 D 盘文件夹</button>
+  <button class="sb-connect" id="connectBtn">链接D盘</button>
   <div class="sb-tip">日记只存本机 D 盘<br>换电脑就没有了</div>
 </div>
 
@@ -260,6 +260,18 @@ input.title-in:focus,textarea.body-in:focus,textarea.tag-in:focus{border-color:v
   <!-- ============ 日历页 ============ -->
   <section class="page active" id="page-calendar">
     <div class="page-hd"><h2>日历</h2><p>农历黄历 · 今日宜忌</p></div>
+    <div class="card">
+      <div class="card-hd"><h3>标签</h3><span class="sub">每年这一天都能看见，可增改</span></div>
+      <div class="card-body">
+        <div class="tag-banner" id="tagBanner">这一天的备注</div>
+        <textarea class="tag-in" id="tagText" placeholder="给这个农历日子写个备注，比如纪念日、要记得的事…"></textarea>
+        <div class="editor-actions">
+          <button class="btn primary" id="tagSaveBtn">保存标签</button>
+          <button class="btn sm" id="tagDelBtn">删除标签</button>
+          <span class="hint" id="tagState"></span>
+        </div>
+      </div>
+    </div>
     <div class="today-bar">
       <div class="lead">今日宜忌<small id="todayDate">—</small></div>
       <div class="yj-pair">
@@ -289,7 +301,7 @@ input.title-in:focus,textarea.body-in:focus,textarea.tag-in:focus{border-color:v
 
   <!-- ============ 日记页 ============ -->
   <section class="page" id="page-diary">
-    <div class="page-hd"><h2>日记</h2><p>这一天 · 当年的今天 · 标签</p></div>
+    <div class="page-hd"><h2>日记</h2><p>这一天 · 当年的今天</p></div>
 
     <div class="card">
       <div class="card-hd"><h3>这一天</h3><span class="sub" id="detailSub">—</span></div>
@@ -313,22 +325,10 @@ input.title-in:focus,textarea.body-in:focus,textarea.tag-in:focus{border-color:v
     </div>
 
     <div class="card">
-      <div class="card-hd"><h3>当年的今天</h3><span class="sub">按农历同月同日，回看往年</span></div>
+      <div class="card-hd"><h3>当年的今天</h3><span class="sub">按八字干支，回看往年</span></div>
       <div class="card-body"><div id="yearsList"></div></div>
     </div>
 
-    <div class="card">
-      <div class="card-hd"><h3>标签</h3><span class="sub">跟着农历日子走，每年今天都能看见</span></div>
-      <div class="card-body">
-        <div class="tag-banner" id="tagBanner">农历 — 的备注</div>
-        <textarea class="tag-in" id="tagText" placeholder="给这个农历日子写个备注，比如纪念日、要记得的事…"></textarea>
-        <div class="editor-actions">
-          <button class="btn primary" id="tagSaveBtn">保存标签</button>
-          <button class="btn sm" id="tagDelBtn">删除标签</button>
-          <span class="hint" id="tagState"></span>
-        </div>
-      </div>
-    </div>
   </section>
 
   <!-- ============ 日记汇总页 ============ -->
@@ -344,7 +344,7 @@ input.title-in:focus,textarea.body-in:focus,textarea.tag-in:focus{border-color:v
 <div class="mask" id="mask">
   <div class="modal">
     <h3>浏览器不支持文件夹保存</h3>
-    <p>当前浏览器无法把日记直接写进 D 盘文件夹。请改用电脑版 <b>Edge</b> 或 <b>Chrome</b> 打开，再点左下角「连接我的 D 盘文件夹」。</p>
+    <p>当前浏览器无法把日记直接写进 D 盘文件夹。请改用电脑版 <b>Edge</b> 或 <b>Chrome</b> 打开，再点左下角「链接D盘」。</p>
     <div class="row"><button class="btn primary" id="modalClose">知道了</button></div>
   </div>
 </div>
@@ -412,12 +412,12 @@ async function restoreFolder(){
     state.savedHandle=h;
     let p=await h.queryPermission({mode:'readwrite'});
     if(p==='granted'){state.dirHandle=h;state.usingFolder=true;setStoreOn(h.name);await rebuildIndex();renderAll();}
-    else{$('connectBtn').textContent='重新连接上次文件夹';$('storeText').textContent='等待重新连接';}
+    else{$('connectBtn').textContent='重新链接D盘';$('storeText').textContent='等待重新连接';}
   }catch(e){}
 }
 function setStoreOn(name){
   $('storeBox').classList.add('on');$('storeText').textContent='已连接：'+name;
-  $('connectBtn').textContent='更换文件夹';$('tip').style.display='none';
+  $('connectBtn').textContent='更换D盘';$('tip').style.display='none';
 }
 
 async function writeDiary(k,data){
@@ -607,25 +607,25 @@ async function renderYears(){
   const d=parseKey(state.selected),l=lunarOf(d);
   const m=Math.abs(l.getMonth()),leap=l.getMonth()<0,day=l.getDay(),curYear=l.getYear();
   const html=[];
-  for(let i=0;i<=6;i++){
+  for(let i=0;i<=2;i++){
     const y=curYear-i;
     try{
       const ll=Lunar.fromYmd(y,leap?-m:m,day);
       if(Math.abs(ll.getMonth())!==m||ll.getDay()!==day)continue;
       const s=ll.getSolar(),k=keyOf(new Date(s.getYear(),s.getMonth()-1,s.getDay()));
       const data=await readDiary(k);
-      const gz=ll.getYearInGanZhi()+'年 · '+ll.getMonthInGanZhi()+'月 · '+ll.getDayInGanZhi()+'日';
+      const gz=ll.getYearInGanZhi()+'年 · '+l.getMonthInGanZhi()+'月'+l.getDayInGanZhi()+'日';
       const label=i===0?'今年':(i+'年前');
       let info='<div class="none">这天还没有留下日记</div>';
       if(data&&(data.title||data.body)){
         info='<div class="t">'+(data.title||'（无标题）')+'</div><div class="s">'+(data.body||'').replace(/</g,'&lt;').slice(0,60)+'</div>';
       }
       html.push('<div class="year-row'+(i===0?' cur':'')+'" data-k="'+k+'">'+
-        '<span class="yr">'+label+'</span><span class="gz">'+y+'年 '+gz+'</span>'+
-        '<div class="info"><div class="s" style="margin:0 0 3px">公历 '+k+' · 农历'+ll.getMonthInChinese()+'月'+ll.getDayInChinese()+'</div>'+info+'</div></div>');
+        '<span class="yr">'+label+'</span><span class="gz">'+gz+'</span>'+
+        '<div class="info"><div class="s" style="margin:0 0 3px">公历 '+k+'</div>'+info+'</div></div>');
     }catch(e){}
   }
-  $('yearsList').innerHTML=html.length?html.join(''):'<div class="empty">这几年都没有对应的农历日子</div>';
+  $('yearsList').innerHTML=html.length?html.join(''):'<div class="empty">这几年都没有对应的日子</div>';
   $('yearsList').querySelectorAll('.year-row').forEach(el=>el.onclick=()=>{
     const k=el.dataset.k;state.anchor=parseKey(k);selectDate(k,false);
   });
