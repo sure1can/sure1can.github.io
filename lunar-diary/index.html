@@ -182,6 +182,7 @@ body.page-calendar .cell{min-height:84px}
 .yj-note{font-size:10.5px;color:var(--ink3);margin-top:8px;line-height:1.5}
 .editor-hd{font-size:13px;font-weight:800;margin:6px 0 9px;display:flex;align-items:center;gap:8px}
 .editor-hd .save-state{font-size:11px;color:var(--ink3);font-weight:400;margin-left:auto}
+.day-nav{display:flex;gap:6px;margin-left:auto}
 input.title-in,textarea.body-in,textarea.tag-in{
   width:100%;font-family:inherit;border:1px solid var(--line);border-radius:10px;
   background:#fff;padding:10px 12px;font-size:13.5px;color:var(--ink);outline:none;transition:.15s;
@@ -320,7 +321,13 @@ input.title-in:focus,textarea.body-in:focus,textarea.tag-in:focus{border-color:v
     <div class="page-hd"><h2>日记</h2><p>这一天 · 当年的今天</p></div>
 
     <div class="card">
-      <div class="card-hd"><h3>这一天</h3><span class="sub" id="detailSub">—</span></div>
+      <div class="card-hd">
+        <h3>这一天</h3><span class="sub" id="detailSub">—</span>
+        <div class="day-nav">
+          <button class="nav-btn" id="prevDay" title="前一天">‹</button>
+          <button class="nav-btn" id="nextDay" title="后一天">›</button>
+        </div>
+      </div>
       <div class="card-body">
         <div class="date-title"><span class="big" id="dBig">—</span><span class="wk" id="dWk"></span></div>
         <div class="date-sub" id="dSub"></div>
@@ -438,25 +445,46 @@ function setStoreOn(name){
   $('connectBtn').textContent='更换D盘';$('tip').style.display='none';
 }
 
+/* 日记标题：默认=干支年月日；有自定义则拼上【自定义】 */
+function diaryTitle(k,custom){
+  const l=lunarOf(parseKey(k));
+  const base=l.getYearInGanZhi()+'年 · '+l.getMonthInGanZhi()+'月 · '+l.getDayInGanZhi()+'日';
+  return custom?base+'【'+custom+'】':base;
+}
+function parseDiaryTxt(text,k){
+  const nl=text.indexOf('\n');
+  const title=nl<0?text.trim():text.slice(0,nl).trim();
+  const body=nl<0?'':text.slice(nl+1).replace(/^\n+/,'');
+  const m=title.match(/【([\s\S]*)】\s*$/);
+  return {title:title,body:body,custom:m?m[1]:(title===diaryTitle(k,'')?'':title)};
+}
 async function writeDiary(k,data){
+  const now=new Date().toISOString(),custom=data.title||'',full=diaryTitle(k,custom);
   if(state.usingFolder&&state.dirHandle){
-    const fh=await state.dirHandle.getFileHandle(k+'.json',{create:true});const w=await fh.createWritable();
-    await w.write(JSON.stringify({title:data.title||'',body:data.body||'',updatedAt:new Date().toISOString()}));await w.close();
-  }else{const all=lsLoad();all[k]={title:data.title||'',body:data.body||'',updatedAt:new Date().toISOString()};lsSave(all);}
-  state.index[k]={title:data.title||'',updatedAt:new Date().toISOString()};state.cache[k]={title:data.title||'',body:data.body||''};
+    const fh=await state.dirHandle.getFileHandle(k+'.txt',{create:true});const w=await fh.createWritable();
+    await w.write(full+'\n\n'+(data.body||''));await w.close();
+    try{await state.dirHandle.removeEntry(k+'.json');}catch(e){} // 清掉旧格式
+  }else{const all=lsLoad();all[k]={title:custom,body:data.body||'',updatedAt:now};lsSave(all);}
+  state.index[k]={title:full,updatedAt:now};state.cache[k]={title:full,custom:custom,body:data.body||'',updatedAt:now};
   if(!state.usingFolder)$('storeBox').classList.remove('on');
 }
 async function readDiary(k){
   if(state.cache[k])return state.cache[k];
   let d=null;
-  if(state.usingFolder&&state.dirHandle){try{const fh=await state.dirHandle.getFileHandle(k+'.json');d=JSON.parse(await (await fh.getFile()).text());}catch(e){}}
-  else d=lsLoad()[k]||null;
+  if(state.usingFolder&&state.dirHandle){
+    try{const fh=await state.dirHandle.getFileHandle(k+'.txt');d=parseDiaryTxt(await (await fh.getFile()).text(),k);}catch(e){}
+    if(!d){try{const fh=await state.dirHandle.getFileHandle(k+'.json');const old=JSON.parse(await (await fh.getFile()).text());d={title:diaryTitle(k,old.title||''),custom:old.title||'',body:old.body||''};}catch(e){}}
+  }else{
+    const old=lsLoad()[k];
+    if(old)d={title:diaryTitle(k,old.title||''),custom:old.title||'',body:old.body||''};
+  }
   if(d)state.cache[k]=d;
   return d;
 }
 async function deleteDiary(k){
-  if(state.usingFolder&&state.dirHandle){try{await state.dirHandle.removeEntry(k+'.json');}catch(e){}}
-  else{const all=lsLoad();delete all[k];lsSave(all);}
+  if(state.usingFolder&&state.dirHandle){
+    for(const ext of ['.txt','.json']){try{await state.dirHandle.removeEntry(k+ext);}catch(e){}}
+  }else{const all=lsLoad();delete all[k];lsSave(all);}
   delete state.cache[k];delete state.index[k];
 }
 
@@ -483,9 +511,14 @@ async function rebuildIndex(){
       try{
         if(name.startsWith('tag_')&&name.endsWith('.json')){
           const d=JSON.parse(await (await (await state.dirHandle.getFileHandle(name)).getFile()).text());state.tags[k]=d;
+        }else if(/^\d{4}-\d{2}-\d{2}\.txt$/.test(name)){
+          const key=name.slice(0,-4);
+          const p=parseDiaryTxt(await (await (await state.dirHandle.getFileHandle(name)).getFile()).text(),key);
+          state.index[key]={title:p.title,updatedAt:new Date().toISOString()};state.cache[key]=p;
         }else if(/^\d{4}-\d{2}-\d{2}\.json$/.test(name)){
           const d=JSON.parse(await (await (await state.dirHandle.getFileHandle(name)).getFile()).text());
-          state.index[k]={title:d.title||'',updatedAt:d.updatedAt};state.cache[k]=d;
+          const title=diaryTitle(k,d.title||'');
+          state.index[k]={title:title,updatedAt:d.updatedAt};state.cache[k]={title:title,custom:d.title||'',body:d.body||''};
         }
       }catch(e){}
     }
@@ -728,6 +761,13 @@ function shiftMonth(delta){
   }
   renderGrid();
 }
+/* 日记页：切换到前一天/后一天 */
+function shiftDay(delta){
+  const d=parseKey(state.selected);d.setDate(d.getDate()+delta);
+  state.anchor=d;selectDate(keyOf(d),false);
+}
+$('prevDay').onclick=()=>shiftDay(-1);
+$('nextDay').onclick=()=>shiftDay(1);
 
 /* ========== 选中日期 -> 日记页 ========== */
 async function selectDate(k,goDiary){
@@ -754,7 +794,7 @@ async function renderDetail(){
   $('dJi').innerHTML=chipsHtml(jiOf(l),12);
   $('dDo').innerHTML=todoHtml(yiOf(l),6);
   const data=await readDiary(state.selected);
-  $('inTitle').value=data?data.title||'':'';
+  $('inTitle').value=data?(data.custom!==undefined?data.custom:''):'';
   $('inBody').value=data?data.body||'':'';
   $('saveState').textContent=data&&data.updatedAt?('保存于 '+new Date(data.updatedAt).toLocaleString('zh-CN',{hour12:false})):'';
 }
