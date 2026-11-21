@@ -128,7 +128,8 @@ body.page-calendar .yj-box .v{font-size:14px;font-weight:600}
 .month-nav{display:flex;align-items:center;gap:9px;margin-left:auto}
 .nav-btn{width:30px;height:30px;border:1px solid var(--line);background:var(--paper);border-radius:8px;cursor:pointer;color:var(--ink);font-size:15px;transition:.15s}
 .nav-btn:hover{background:var(--paper2);border-color:var(--line2)}
-.month-label{font-size:14px;font-weight:800;min-width:130px;text-align:center}
+.month-label{font-size:14px;font-weight:800;min-width:130px;text-align:center;cursor:pointer;border-bottom:1px dashed var(--line2);padding-bottom:2px;transition:.15s}
+.month-label:hover{color:var(--red);border-color:var(--red)}
 
 /* 日历网格 */
 .week-row{display:grid;grid-template-columns:repeat(7,1fr);margin-bottom:6px}
@@ -198,7 +199,18 @@ input.title-in:focus,textarea.body-in:focus,textarea.tag-in:focus{border-color:v
 .btn.red{background:var(--red);color:#fff;border-color:var(--red)}
 .btn.primary{background:var(--ink);color:#fff;border-color:var(--ink)}
 .btn.sm{padding:5px 10px;font-size:11.5px;border-radius:8px}
-.tag-banner{font-size:11.5px;color:var(--gold);background:var(--gold-soft);border:1px solid #ecd99b;border-radius:9px;padding:7px 11px;margin-bottom:10px}
+.tag-banner{font-size:11.5px;color:var(--gold);background:var(--gold-soft);border:1px solid #ecd99b;border-radius:9px;padding:7px 11px;margin-bottom:10px;cursor:pointer}
+.tag-chips{display:flex;flex-wrap:wrap;gap:6px;margin:4px 0 10px;min-height:30px}
+.tag-chip{display:inline-flex;align-items:center;gap:6px;background:var(--gold-soft);border:1px solid #e6d5aa;color:#7a5b1e;border-radius:999px;padding:5px 11px;font-size:12.5px;font-weight:700}
+.tag-chip .x{cursor:pointer;color:#a8893f;font-weight:800;font-size:13px;line-height:1}
+.tag-chip .x:hover{color:var(--red)}
+.tag-chip-add{background:#fff;border:1px dashed var(--line2);color:var(--ink3);border-radius:999px;padding:5px 11px;font-size:12px;cursor:pointer}
+.tag-chip-add:hover{border-color:var(--gold);color:var(--gold)}
+.tag-empty{font-size:11.5px;color:var(--ink3);font-style:italic;padding:5px 0}
+.tag-add-row{display:flex;gap:8px;margin-top:4px}
+.tag-add-row input{flex:1;font-family:inherit;font-size:12.5px;border:1px solid var(--line);border-radius:9px;padding:7px 11px;outline:none}
+.tag-add-row input:focus{border-color:var(--gold)}
+.cell .cell-tag{position:absolute;bottom:3px;left:3px;right:3px;font-size:8px;color:#7a5b1e;background:var(--gold-soft);border-radius:4px;padding:0 2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.4}
 .empty{font-size:12px;color:var(--ink3);font-style:italic}
 
 /* 当年的今天 */
@@ -230,6 +242,10 @@ input.title-in:focus,textarea.body-in:focus,textarea.tag-in:focus{border-color:v
 .modal h3{font-size:18px;margin-bottom:10px}
 .modal p{font-size:13px;color:var(--ink2);line-height:1.8;margin-bottom:16px}
 .modal .row{display:flex;gap:8px;justify-content:flex-end}
+.date-pick-row{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin:6px 0 20px}
+.date-pick-row select{font-family:inherit;font-size:14px;border:1px solid var(--line);border-radius:9px;padding:8px 10px;background:#fff;color:var(--ink)}
+.date-pick-row #pickY{width:92px}.date-pick-row #pickM,.date-pick-row #pickD{width:64px}
+.date-pick-row span{font-size:12px;color:var(--ink2)}
 
 @media(max-width:760px){
   body{display:block}
@@ -280,13 +296,13 @@ input.title-in:focus,textarea.body-in:focus,textarea.tag-in:focus{border-color:v
     <div class="card" id="tagCard">
       <div class="card-hd"><h3>标签</h3><span class="sub">每年这一天都能看见，可增改</span></div>
       <div class="card-body">
-        <div class="tag-banner" id="tagBanner">这一天的备注</div>
-        <textarea class="tag-in" id="tagText" placeholder="给这个农历日子写个备注，比如纪念日、要记得的事…"></textarea>
-        <div class="editor-actions">
-          <button class="btn primary" id="tagSaveBtn">保存标签</button>
-          <button class="btn sm" id="tagDelBtn">删除标签</button>
-          <span class="hint" id="tagState"></span>
+        <div class="tag-banner" id="tagBanner">这一天的标签 · 点日期可切换</div>
+        <div class="tag-chips" id="tagChips"></div>
+        <div class="tag-add-row">
+          <input id="tagAddInput" placeholder="输入标签后回车，如：生日、纪念日、要记得的事…" maxlength="30">
+          <button class="btn sm" id="tagAddBtn">添加</button>
         </div>
+        <div class="hint" id="tagState" style="margin-top:8px"></div>
       </div>
     </div>
     <div class="today-bar">
@@ -364,6 +380,22 @@ input.title-in:focus,textarea.body-in:focus,textarea.tag-in:focus{border-color:v
       <div class="card-body"><div class="list" id="list"></div></div>
     </div>
   </section>
+</div>
+
+<div class="mask" id="dateMask">
+  <div class="modal">
+    <h3>跳到某一天</h3>
+    <p>选择公历年月日，直接跳到那一天查看或补写日记。</p>
+    <div class="date-pick-row">
+      <select id="pickY"></select><span>年</span>
+      <select id="pickM"></select><span>月</span>
+      <select id="pickD"></select><span>日</span>
+    </div>
+    <div class="row">
+      <button class="btn sm" id="pickCancel">取消</button>
+      <button class="btn primary" id="pickGo">跳转</button>
+    </div>
+  </div>
 </div>
 
 <div class="mask" id="mask">
@@ -503,16 +535,30 @@ async function deleteDiary(k){
 /* 标签：按农历月日 */
 function tagKey(l){return 'tag_'+(l.getMonth()<0?'闰':'')+Math.abs(l.getMonth())+'_'+l.getDay();}
 function tagLabel(l){return '农历 '+(l.getMonth()<0?'闰':'')+l.getMonthInChinese()+'月'+l.getDayInChinese();}
-async function writeTagRaw(k,text){
-  if(state.usingFolder&&state.dirHandle){
-    const fh=await state.dirHandle.getFileHandle(k+'.json',{create:true});const w=await fh.createWritable();
-    await w.write(JSON.stringify({text:text,updatedAt:new Date().toISOString()}));await w.close();
-  }else{const all=tagLsLoad();all[k]={text:text,updatedAt:new Date().toISOString()};tagLsSave(all);}
-  state.tags[k]={text:text,updatedAt:new Date().toISOString()};
+/* 兼容旧 text（按分隔符拆成多个），新格式为 items 数组 */
+function tagItems(t){
+  if(!t)return [];
+  if(Array.isArray(t.items))return t.items.filter(Boolean);
+  if(t.text)return t.text.split(/[、,，;；\n]+/).map(s=>s.trim()).filter(Boolean);
+  return [];
 }
+async function writeTagItems(k,items){
+  const clean=items.map(s=>String(s).trim()).filter(Boolean);
+  const rec={items:clean,text:clean.join('、'),updatedAt:new Date().toISOString()};
+  if(state.usingFolder&&state.dirHandle){
+    try{
+      const fh=await state.dirHandle.getFileHandle(k+'.json',{create:true});const w=await fh.createWritable();
+      await w.write(JSON.stringify(rec));await w.close();
+    }catch(e){}
+  }
+  // 本机也存一份（双保险）
+  const all=tagLsLoad();all[k]=rec;tagLsSave(all);
+  state.tags[k]=rec;
+}
+async function writeTagRaw(k,text){await writeTagItems(k,tagItems({text:text}));}
 async function deleteTag(k){
   if(state.usingFolder&&state.dirHandle){try{await state.dirHandle.removeEntry(k+'.json');}catch(e){}}
-  else{const all=tagLsLoad();delete all[k];tagLsSave(all);}
+  const all=tagLsLoad();delete all[k];tagLsSave(all);   // 本机始终清一份
   delete state.tags[k];
 }
 async function rebuildIndex(){
@@ -752,6 +798,13 @@ function renderGrid(){
       mini.innerHTML='<div class="my">宜 '+(yi2.length?yi2.join('·'):'—')+'</div><div class="mj">忌 '+(ji2.length?ji2.join('·'):'—')+'</div>';
       el.appendChild(mini);
     }
+    // 标签小标记（公历/农历视图都显示）
+    const dayTags=tagItems(state.tags[tagKey(l)]);
+    if(dayTags.length){
+      const tm=document.createElement('div');tm.className='cell-tag';tm.title=dayTags.join('、');
+      tm.textContent=dayTags[0]+(dayTags.length>1?' +'+(dayTags.length-1):'');
+      el.appendChild(tm);
+    }
     if(state.index[k]){const mk=document.createElement('span');mk.className='mark';el.appendChild(mk);}
     el.onclick=()=>selectDate(k,true);
     grid.appendChild(el);
@@ -765,6 +818,33 @@ document.querySelectorAll('.tab').forEach(t=>t.onclick=()=>{
 });
 $('prevM').onclick=()=>shiftMonth(-1);
 $('nextM').onclick=()=>shiftMonth(1);
+/* 点月份：弹出年月日选择器 */
+function openDatePicker(){
+  const d=parseKey(state.selected);
+  const ySel=$('pickY'),mSel=$('pickM'),dSel=$('pickD');
+  ySel.innerHTML='';for(let y=d.getFullYear()-12;y<=d.getFullYear()+5;y++)ySel.add(new Option(y+'年',y));
+  mSel.innerHTML='';for(let m=1;m<=12;m++)mSel.add(new Option(m+'月',m));
+  ySel.value=d.getFullYear();mSel.value=d.getMonth()+1;
+  refreshPickerDays();dSel.value=d.getDate();
+  $('dateMask').classList.add('show');
+}
+function refreshPickerDays(){
+  const y=Number($('pickY').value)||today.getFullYear(),m=Number($('pickM').value)||1;
+  const max=new Date(y,m,0).getDate(),dSel=$('pickD'),old=Number(dSel.value);
+  dSel.innerHTML='';for(let i=1;i<=max;i++)dSel.add(new Option(i+'日',i));
+  dSel.value=Math.min(old||1,max);
+}
+$('monthLabel').onclick=openDatePicker;
+$('pickY').onchange=refreshPickerDays;
+$('pickM').onchange=refreshPickerDays;
+$('pickCancel').onclick=()=>$('dateMask').classList.remove('show');
+$('dateMask').onclick=(e)=>{if(e.target===$('dateMask'))$('dateMask').classList.remove('show');};
+$('pickGo').onclick=()=>{
+  const y=Number($('pickY').value),m=Number($('pickM').value),d=Number($('pickD').value);
+  const k=keyOf(new Date(y,m-1,d));
+  $('dateMask').classList.remove('show');
+  state.anchor=parseKey(k);selectDate(k,true);
+};
 function shiftMonth(delta){
   if(state.view==='solar')state.anchor=new Date(state.anchor.getFullYear(),state.anchor.getMonth()+delta,1);
   else{
@@ -840,25 +920,33 @@ async function renderYears(){
   });
 }
 
-/* ========== 标签 ========== */
-async function renderTag(){
+/* ========== 标签（小标记） ========== */
+function renderTag(){
   const l=lunarOf(parseKey(state.selected)),k=tagKey(l);
-  $('tagBanner').textContent=tagLabel(l)+' 的备注 · 每年这一天都能看见';
-  const t=state.tags[k];
-  $('tagText').value=t?t.text||'':'';
-  $('tagState').textContent=t&&t.updatedAt?('保存于 '+new Date(t.updatedAt).toLocaleString('zh-CN',{hour12:false})):'';
+  $('tagBanner').textContent=tagLabel(l)+' 的标签 · 每年这一天都能看见';
+  const items=tagItems(state.tags[k]);
+  const box=$('tagChips');
+  box.innerHTML=items.length
+    ? items.map((s,i)=>'<span class="tag-chip" title="点 × 删除">'+s+'<span class="x" data-i="'+i+'">×</span></span>').join('')
+    : '<span class="tag-empty">还没有标签，在下面输入一个吧</span>';
+  box.querySelectorAll('.x').forEach(x=>x.onclick=async()=>{
+    const arr=tagItems(state.tags[k]);arr.splice(Number(x.dataset.i),1);
+    if(arr.length)await writeTagItems(k,arr);else await deleteTag(k);
+    renderTag();renderGrid();
+  });
+  $('tagState').textContent=state.tags[k]&&state.tags[k].updatedAt?('更新于 '+new Date(state.tags[k].updatedAt).toLocaleString('zh-CN',{hour12:false})):'';
 }
-$('tagSaveBtn').onclick=async()=>{
-  const l=lunarOf(parseKey(state.selected)),k=tagKey(l),text=$('tagText').value;
-  if(!text.trim()){alert('标签内容为空，如需删除请点删除按钮。');return;}
-  await writeTagRaw(k,text);$('tagState').textContent='刚刚保存';
-};
-$('tagDelBtn').onclick=async()=>{
+async function addTag(){
+  const inp=$('tagAddInput'),v=inp.value.trim();
+  if(!v){alert('先输入标签内容。');return;}
   const l=lunarOf(parseKey(state.selected)),k=tagKey(l);
-  if(!state.tags[k]){alert('这一天还没有标签。');return;}
-  if(!confirm('确定删除这个农历日子的标签吗？'))return;
-  await deleteTag(k);$('tagText').value='';$('tagState').textContent='';
-};
+  const arr=tagItems(state.tags[k]);
+  v.split(/[、,，;；]+/).map(s=>s.trim()).filter(Boolean).forEach(s=>{if(!arr.includes(s))arr.push(s);});
+  await writeTagItems(k,arr);inp.value='';$('tagState').textContent='刚刚保存';
+  renderTag();renderGrid();
+}
+$('tagAddBtn').onclick=addTag;
+$('tagAddInput').onkeydown=(e)=>{if(e.key==='Enter'){e.preventDefault();addTag();}};
 
 /* ========== 日记汇总 ========== */
 function renderList(){
