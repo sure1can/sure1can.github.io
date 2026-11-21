@@ -913,6 +913,7 @@ function whenReady(cb,tries){
 }
 whenReady(async function init(){
   renderToday();renderGrid();await renderDetail();await renderYears();await renderTag();renderList();
+  await restoreFolder();          // 恢复上次连接的 D 盘文件夹（关键：不能漏）
   await rebuildIndex();renderGrid();renderList();
 });
 </script>
