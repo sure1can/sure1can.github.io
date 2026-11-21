@@ -822,6 +822,9 @@ function renderList(){
     const k=el.dataset.k;state.anchor=parseKey(k);selectDate(k,true);
   });
 }
+function renderAll(){
+  renderToday();renderGrid();renderDetail();renderYears();renderTag();renderList();
+}
 
 /* ========== 保存/删除日记 ========== */
 $('saveBtn').onclick=async()=>{
