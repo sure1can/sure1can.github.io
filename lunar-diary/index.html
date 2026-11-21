@@ -460,13 +460,26 @@ function parseDiaryTxt(text,k){
 }
 async function writeDiary(k,data){
   const now=new Date().toISOString(),custom=data.title||'',full=diaryTitle(k,custom);
+  const localWrite=()=>{const all=lsLoad();all[k]={title:custom,body:data.body||'',updatedAt:now};lsSave(all);};
+  let where='local';
   if(state.usingFolder&&state.dirHandle){
-    const fh=await state.dirHandle.getFileHandle(k+'.txt',{create:true});const w=await fh.createWritable();
-    await w.write(full+'\n\n'+(data.body||''));await w.close();
-    try{await state.dirHandle.removeEntry(k+'.json');}catch(e){} // 清掉旧格式
-  }else{const all=lsLoad();all[k]={title:custom,body:data.body||'',updatedAt:now};lsSave(all);}
+    try{
+      const fh=await state.dirHandle.getFileHandle(k+'.txt',{create:true});
+      const w=await fh.createWritable();
+      await w.write(full+'\n\n'+(data.body||''));await w.close();
+      try{await state.dirHandle.removeEntry(k+'.json');}catch(e){}
+      where='folder';
+    }catch(e){
+      // D盘写入失败（权限过期等）：降级到本机，保证日记不丢，并明确告知
+      where='fallback';state.usingFolder=false;
+      localWrite();
+      $('storeBox').classList.remove('on');
+      $('storeText').textContent='D盘写入失败 · 已暂存本机';
+    }
+  }else{localWrite();}
   state.index[k]={title:full,updatedAt:now};state.cache[k]={title:full,custom:custom,body:data.body||'',updatedAt:now};
-  if(!state.usingFolder)$('storeBox').classList.remove('on');
+  if(where!=='folder')$('storeBox').classList.remove('on');
+  return where;
 }
 async function readDiary(k){
   if(state.cache[k])return state.cache[k];
@@ -870,8 +883,15 @@ function renderAll(){
 $('saveBtn').onclick=async()=>{
   const title=$('inTitle').value.trim(),body=$('inBody').value;
   if(!title&&!body.trim()){alert('还没写内容呢。');return;}
-  await writeDiary(state.selected,{title,body});
-  $('saveState').textContent='刚刚保存';renderGrid();renderList();renderYears();
+  try{
+    const where=await writeDiary(state.selected,{title,body});
+    $('saveState').textContent = where==='folder' ? '已存到 D 盘（'+state.selected+'.txt）'
+      : (where==='fallback' ? 'D盘失败，已暂存本机；请重新链接D盘' : '已暂存本机；想存 D 盘请点左下角「链接D盘」');
+    renderGrid();renderList();renderYears();
+  }catch(e){
+    $('saveState').textContent='保存失败：'+(e&&e.message||e);
+    alert('保存失败：'+(e&&e.message||e));
+  }
 };
 $('delBtn').onclick=async()=>{
   if(!state.index[state.selected]){alert('这一天还没有日记。');return;}
