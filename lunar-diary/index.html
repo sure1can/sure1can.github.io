@@ -460,7 +460,9 @@ function parseDiaryTxt(text,k){
 }
 async function writeDiary(k,data){
   const now=new Date().toISOString(),custom=data.title||'',full=diaryTitle(k,custom);
-  const localWrite=()=>{const all=lsLoad();all[k]={title:custom,body:data.body||'',updatedAt:now};lsSave(all);};
+  // 第一步：一定先写本机（主存储，永不失败；换电脑/换浏览器就没了）
+  const all=lsLoad();all[k]={title:custom,body:data.body||'',updatedAt:now};lsSave(all);
+  // 第二步：连着 D 盘时，同步写一份 txt 到文件夹
   let where='local';
   if(state.usingFolder&&state.dirHandle){
     try{
@@ -470,27 +472,24 @@ async function writeDiary(k,data){
       try{await state.dirHandle.removeEntry(k+'.json');}catch(e){}
       where='folder';
     }catch(e){
-      // D盘写入失败（权限过期等）：降级到本机，保证日记不丢，并明确告知
-      where='fallback';state.usingFolder=false;
-      localWrite();
+      // D盘写失败不影响本机已保存
+      where='local';state.usingFolder=false;
       $('storeBox').classList.remove('on');
-      $('storeText').textContent='D盘写入失败 · 已暂存本机';
+      $('storeText').textContent='D盘未连通 · 日记已存本机';
     }
-  }else{localWrite();}
+  }
   state.index[k]={title:full,updatedAt:now};state.cache[k]={title:full,custom:custom,body:data.body||'',updatedAt:now};
-  if(where!=='folder')$('storeBox').classList.remove('on');
   return where;
 }
 async function readDiary(k){
   if(state.cache[k])return state.cache[k];
   let d=null;
+  // 先读 D 盘 txt（若连通），再退回本机
   if(state.usingFolder&&state.dirHandle){
     try{const fh=await state.dirHandle.getFileHandle(k+'.txt');d=parseDiaryTxt(await (await fh.getFile()).text(),k);}catch(e){}
     if(!d){try{const fh=await state.dirHandle.getFileHandle(k+'.json');const old=JSON.parse(await (await fh.getFile()).text());d={title:diaryTitle(k,old.title||''),custom:old.title||'',body:old.body||''};}catch(e){}}
-  }else{
-    const old=lsLoad()[k];
-    if(old)d={title:diaryTitle(k,old.title||''),custom:old.title||'',body:old.body||''};
   }
+  if(!d){const old=lsLoad()[k];if(old)d={title:diaryTitle(k,old.title||''),custom:old.title||'',body:old.body||''};}
   if(d)state.cache[k]=d;
   return d;
 }
