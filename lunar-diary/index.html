@@ -169,7 +169,17 @@ body.page-calendar .cell{min-height:84px}
 .dyj.ji{background:var(--red-soft);border-color:var(--red-line)}
 .dyj h4{font-size:14px;margin-bottom:5px}
 .dyj.yi h4{color:var(--green)} .dyj.ji h4{color:var(--red)}
-.dyj p{font-size:12.3px;color:var(--ink);line-height:1.6}
+.yj-chips{display:flex;flex-wrap:wrap;gap:5px;min-height:18px}
+.yj-chip{display:inline-flex;align-items:baseline;gap:5px;background:#fff;border:1px solid var(--line);border-radius:7px;padding:3px 8px;font-size:12.5px;cursor:help;line-height:1.45}
+.yj-chip .orig{font-size:9.5px;color:var(--ink3)}
+.dyj.yi .yj-chip{border-color:var(--green-line)}
+.dyj.ji .yj-chip{border-color:var(--red-line)}
+.yj-do{background:var(--gold-soft);border:1px solid #ecd99b;border-radius:12px;padding:11px 14px;margin-bottom:16px}
+.yj-do h4{font-size:12.5px;color:#8a6a16;margin-bottom:6px}
+.yj-do ul{list-style:none;margin:0;padding:0}
+.yj-do li{font-size:12px;color:var(--ink);line-height:1.7;padding-left:14px;position:relative}
+.yj-do li::before{content:"›";position:absolute;left:2px;color:var(--gold);font-weight:800}
+.yj-note{font-size:10.5px;color:var(--ink3);margin-top:8px;line-height:1.5}
 .editor-hd{font-size:13px;font-weight:800;margin:6px 0 9px;display:flex;align-items:center;gap:8px}
 .editor-hd .save-state{font-size:11px;color:var(--ink3);font-weight:400;margin-left:auto}
 input.title-in,textarea.body-in,textarea.tag-in{
@@ -316,9 +326,11 @@ input.title-in:focus,textarea.body-in:focus,textarea.tag-in:focus{border-color:v
         <div class="date-sub" id="dSub"></div>
         <div class="date-tags" id="dTags"></div>
         <div class="detail-yj">
-          <div class="dyj yi"><h4>宜 · 可以做</h4><p id="dYi">—</p></div>
-          <div class="dyj ji"><h4>忌 · 不宜做</h4><p id="dJi">—</p></div>
+          <div class="dyj yi"><h4>宜 · 可以做</h4><div class="yj-chips" id="dYi">—</div></div>
+          <div class="dyj ji"><h4>忌 · 不宜做</h4><div class="yj-chips" id="dJi">—</div></div>
         </div>
+        <div id="dDo"></div>
+        <div class="yj-note">解释和现代参考已换成白话；鼠标停在词上可看原词与传统说法。黄历内容仅供民俗参考。</div>
         <div class="editor-hd">✍️ 我写下的日记<span class="save-state" id="saveState"></span></div>
         <input class="title-in" id="inTitle" placeholder="给这天起个标题…" maxlength="60">
         <textarea class="body-in" id="inBody" placeholder="今天发生了什么？想到什么就写什么…"></textarea>
@@ -487,7 +499,138 @@ async function rebuildIndex(){
 function lunarOf(d){return Lunar.fromDate(d);}
 function yiOf(l){return l.getDayYi()||[];}
 function jiOf(l){return l.getDayJi()||[];}
-function joinItems(a,n){if(!a.length)return '—';const s=a.slice(0,n).join('、');return a.length>n?s+' 等':s;}
+
+/* ========== 传统术语 → 年轻人白话 ========== */
+/* 每项：[短白话, 解释, 当下可参考的具体事] */
+const YJ = {
+'上梁':['房屋封顶','盖房时架起主梁，是结构完工的关键一步','给新家做个装修节点庆祝、推进搁置的家装计划'],
+'乘船':['坐船出游','坐船出行','安排一次轮渡或游船、海边玩一天'],
+'习艺':['学门手艺','学习技艺技能','报个兴趣班、学乐器画画、考个证'],
+'交易':['买卖交易','做买卖、交换物品','谈生意、下单购物、二手转卖'],
+'伐木':['修整树木','砍伐、修整树木','修修盆栽、处理旧木料（ nowadays 少砍树，以修剪为主）'],
+'会亲友':['约见亲友','和朋友亲戚见面','约饭局、聚会、见很久没见的朋友'],
+'作梁':['备装修料','制作房梁木料','为装修采购主材、定家具'],
+'作灶':['装厨房','修建炉灶、厨房','装修厨房、换新厨具、开火做顿饭'],
+'修坟':['祭扫祖坟','修整祖先坟墓','扫墓、祭祖、整理家族老照片'],
+'修造':['装修施工','修理建造房子','家里装修、改造、维修'],
+'修门':['修门换门','修理门窗','换门锁、装门、修门框'],
+'修饰垣墙':['刷墙修墙','粉刷修缮围墙墙壁','刷墙、翻新、把墙面的磕碰补一补'],
+'入学':['入学报名','开始上学','开学、报名课程、注册入学'],
+'入宅':['搬新家','搬进新住处','乔迁、搬进新家、整理新住处'],
+'入殓':['办告别仪式','把遗体安放进棺木，属丧礼环节','参加告别仪式、送别、处理身后事'],
+'冠笄':['办成人礼','古代成年礼：男子加冠、女子插发簪（簪就是首饰），表示成年了','办个成年纪念、拍组成年照、戴件有意义的饰品'],
+'出火':['迁神位香火','迁移供奉的神像香火','搬家时迁供神像、重新安放香火'],
+'出行':['出门远行','出远门','安排旅行、出差、长途出行'],
+'出货财':['发货卖货','把货物卖出','发货、清仓、把闲置卖掉回血'],
+'分居':['分开住','分开居住','分房睡、独立生活、搬出去住'],
+'割蜜':['取蜂蜜','割取蜂蜜','买点好蜂蜜、养蜂、收获'],
+'动土':['破土开工','挖土动工','装修开工、挖地基、启动工程'],
+'取渔':['钓鱼捕鱼','捕鱼','约人钓鱼、出海、吃顿鱼'],
+'合寿木':['备寿材','制作棺木，为身后事做准备','和长辈聊聊身后安排、做好长远规划'],
+'合帐':['搭帐篷布幔','搭建帐幔、帐篷','露营搭帐篷、布置床幔、换个房间氛围'],
+'合脊':['屋顶封顶','房屋合龙封顶','装修收尾、给项目做个了结'],
+'启钻':['开挖墓穴','挖墓穴，迁葬或下葬用','迁坟、下葬相关的家族事务'],
+'坏垣':['拆旧墙','拆除旧围墙','拆旧、改造、断舍离扔旧物'],
+'塑绘':['画画手作','塑造、绘画','画画、陶艺、手作、拍组创作照'],
+'塞穴':['堵洞补漏','堵塞洞穴','补漏洞、封老鼠洞、修补漏水'],
+'嫁娶':['结婚办婚礼','男女成婚','领证、办婚礼、求婚'],
+'安床':['布置床铺','安置床铺','换新床、布置卧室、调整睡姿环境'],
+'安机械':['装新设备','安装机器设备','装新家电、装设备、调试机器'],
+'安碓磑':['装厨房设备','安装石磨等加工器具','装厨房小电器、开始自己做吃的'],
+'安葬':['下葬安葬','把遗体安葬入土','办葬礼、下葬、祭奠'],
+'安门':['装门换门','安装门','换门、装门锁、装纱窗'],
+'安香':['供奉香火','安放香火神位','供奉神像、上香、祭拜'],
+'定磉':['打地基','确定柱础基石','装修定位、打地基、定方案'],
+'平治道涂':['修路铺路','修整道路','修路、铺路、整理家门口道路'],
+'开仓':['开仓取货','打开仓库','开仓放货、取货、发货'],
+'开光':['赋予仪式感','佛像神像开光启用','给新买的物件办个启用仪式、新东西开箱'],
+'开厕':['装修卫生间','修建厕所','修马桶、装修卫生间、疏通下水'],
+'开市':['开业开张','市场开市营业','开店、开业、上架新品'],
+'开柱眼':['打孔立柱','建房时凿柱眼','装修打孔、安装架子'],
+'开池':['挖水池','开凿池塘','建鱼缸、挖水池、造个小水景'],
+'开渠':['挖沟渠','开挖水渠','疏通水道、修排水、清理沟渠'],
+'开生坟':['预留长远','预先修建空墓，做长远打算','做长远规划、为将来做准备'],
+'归宁':['回娘家','出嫁女子回娘家探亲','回娘家、走亲戚、看爸妈'],
+'归岫':['回归本处','云彩回到山里，比喻回归','回家休息、收收心、回到本色'],
+'成服':['穿孝守丧','穿上孝服守丧','参加葬礼、追思、守孝'],
+'扫舍':['大扫除','打扫房屋','大扫除、断舍离、整理房间'],
+'拆卸':['拆旧清仓','拆除拆卸','拆旧物、断舍离、清掉占地方的东西'],
+'挂匾':['挂招牌','悬挂匾额招牌','公司挂牌、挂招牌、给店铺换门头'],
+'捕捉':['抓拍捕捉','捕捉、抓捕','抓拍照片、捕捉灵感、钓钓鱼'],
+'掘井':['挖井找水','挖掘水井','找水源、打井、探索新资源'],
+'探病':['看望病人','探望生病的人','探病、关心朋友、送点温暖'],
+'放水':['放水灌溉','放水、注水','给鱼缸换水、灌溉、放水养鱼'],
+'教牛马':['训练动物','调教牲畜','训宠物、教孩子、做培训'],
+'整手足甲':['剪指甲','修剪手脚指甲','剪指甲、修手修脚、做个护理'],
+'斋醮':['静心祈福','斋戒、做法事祈福','吃素、静心、冥想、去寺庙'],
+'断蚁':['除虫灭蚁','消灭蚂蚁虫害','除虫、灭蚁、彻底打扫卫生'],
+'无':['无特别宜忌','这一天没有特别的讲究','随心过，按自己的节奏来'],
+'普渡':['祭拜行善','普渡众生、布施','祭拜、做件善事、布施捐赠'],
+'架马':['搭架施工','架设、搭建','搭棚、架桥、开工搭架子'],
+'栽种':['种花种草','种植','养绿植、种花、阳台种菜'],
+'求医':['看病就医','求医问诊','看病、体检、就医'],
+'求嗣':['备孕求子','祈求子嗣','备孕、做家庭规划'],
+'沐浴':['洗澡沐浴','洗澡','洗个澡、泡个澡、洗头做清洁'],
+'治病':['治病疗养','治疗疾病','看病治疗、吃药、好好康复'],
+'牧养':['养宠物植物','放牧饲养','养宠物、养植物、照顾小动物'],
+'理发':['剪头发','理发','理发、换个发型、修剪'],
+'畋猎':['户外活动','打猎','户外运动、钓鱼、徒步'],
+'盖屋':['盖房装修','盖屋顶房屋','盖房、装修、房屋工程'],
+'破土':['破土动工','挖土开工','开工、挖坑种树、启动工程'],
+'破屋':['拆旧翻修','拆毁旧屋','旧房改造、翻新、拆除'],
+'祈福':['许愿祈福','祈求福运','许愿、去寺庙、冥想、写愿望清单'],
+'祭祀':['祭祖扫墓','祭祀祖先神明','祭祖、扫墓、纪念先人'],
+'移徙':['搬家迁移','迁移住处','搬家、换住处、调整座位'],
+'移柩':['迁葬移灵','迁移灵柩','迁坟、家族丧葬事务'],
+'立券':['签合同','订立契约字据','签合同、立字据、谈合约'],
+'立碑':['立碑纪念','树立碑石','立碑、做纪念物、纪念碑'],
+'竖柱':['立柱搭架','竖立房柱','装修立柱、搭框架'],
+'筑堤':['修堤防洪','修筑堤坝','修堤、防洪、加固工程'],
+'纳婿':['招上门女婿','招婿入赘','结婚相关、组建家庭'],
+'纳畜':['买宠物','买入牲畜','买宠物、领养小动物、养活物'],
+'纳财':['收钱进账','收纳钱财','收钱、入账、讨回欠款、理财'],
+'纳采':['提亲求婚','订婚前的提亲礼','求婚、提亲、见家长'],
+'经络':['按摩理疗','疏通经络','按摩、针灸、拉伸、瑜伽'],
+'结网':['编织结网','织网','织毛衣、编东西、建立人脉'],
+'置产':['买房产资产','置办产业','买房、买车、买资产'],
+'行丧':['办丧事','举行丧礼','参加葬礼、送别'],
+'补垣':['补墙修缮','修补墙壁','补墙、修补、维护'],
+'裁衣':['做衣服裁布','裁剪衣物','买新衣、改衣服、量体裁衣'],
+'解除':['化解烦恼消除','消除灾祸、解除不好的状态','化解矛盾、戒烟戒掉坏习惯、断舍离、清理负能量'],
+'订盟':['订婚签约','订立盟约婚约','订婚、签约、确立关系'],
+'词讼':['打官司维权','诉讼纠纷','打官司、维权、法律咨询'],
+'诸事不宜':['啥也别干','这天什么都不适合','躺平休息、别做大决定、低调过一天'],
+'谢土':['祭拜感恩','答谢土地神','祭拜、表达感恩、竣工答谢'],
+'赴任':['新官上任','赴任就职','入职、新工作开始、走马上任'],
+'起基':['打地基开工','开始奠基','奠基、开工、启动新项目'],
+'进人口':['添丁招人','增加家里人口','添丁、招人、收养、迎接新成员'],
+'造仓':['收纳整理','建造仓库','收纳整理、买储物柜、建仓库'],
+'造庙':['修庙宇','修建寺庙','修缮寺庙、做精神层面的建设'],
+'造桥':['架桥铺路','建造桥梁','架桥、搭合作桥梁、牵线搭桥'],
+'造畜稠':['给宠物安家','建造牲畜棚圈','给宠物安个窝、搭棚'],
+'造船':['买船坐船','建造船只','造船、买船、安排水上旅行'],
+'造车器':['买车修车','制造车辆器具','买车、修车、车辆相关'],
+'酬神':['还愿答谢','酬谢神明','还愿、答谢、祭拜'],
+'针灸':['针灸理疗','中医针灸','针灸、中医理疗'],
+'问名':['了解对方','询问姓名生辰，婚俗之一','相亲、深入了解对方、合合拍不拍'],
+'除服':['守孝结束','脱下孝服','追思结束、恢复正常生活'],
+'雇佣':['招人雇人','雇佣人手','招人、雇人、请阿姨'],
+'雕刻':['雕刻刻字','雕刻','刻字、雕刻、手作、纹身'],
+'馀事勿取':['专心一件事','其余的事情都不要做','专心做好上面那件事，其他的先放下']
+};
+function yjInfo(t){return YJ[t]||[t,'传统黄历用语','按自己的节奏来就好'];}
+function yjShort(t){return yjInfo(t)[0];}
+function joinItems(a,n){if(!a.length)return '—';const s=a.slice(0,n).map(yjShort).join('、');return a.length>n?s+' 等':s;}
+function chipsHtml(arr,n){
+  if(!arr.length)return '<span class="orig">这天没有特别讲究</span>';
+  return arr.slice(0,n).map(t=>{const i=yjInfo(t);return '<span class="yj-chip" title="'+i[1]+'｜原词：'+t+'">'+i[0]+'<span class="orig">'+t+'</span></span>';}).join('');
+}
+function todoHtml(arr,n){
+  if(!arr.length)return '';
+  const seen={},li=[];
+  for(const t of arr.slice(0,n)){const s=yjInfo(t)[2];if(seen[s])continue;seen[s]=1;li.push('<li>'+s+'</li>');}
+  return '<div class="yj-do"><h4>今天可以这样过 · 参考建议</h4><ul>'+li.join('')+'</ul></div>';
+}
 function cnMonthName(m){const s=['','一','二','三','四','五','六','七','八','九','十','冬','腊'];return s[m]||m;}
 function lunarCursorInfo(d){const l=lunarOf(d);return {y:l.getYear(),m:Math.abs(l.getMonth()),leap:l.getMonth()<0};}
 
@@ -560,7 +703,8 @@ function renderGrid(){
     const lEl=document.createElement('div');lEl.className='l'+(isFest?' fest':'');lEl.textContent=ltext;el.appendChild(lEl);
     if(state.view==='lunar'&&!out){
       const mini=document.createElement('div');mini.className='mini';
-      mini.innerHTML='<div class="my">宜 '+joinItems(yiOf(l),2)+'</div><div class="mj">忌 '+joinItems(jiOf(l),2)+'</div>';
+      const yi2=yiOf(l).slice(0,2).map(yjShort),ji2=jiOf(l).slice(0,2).map(yjShort);
+      mini.innerHTML='<div class="my">宜 '+(yi2.length?yi2.join('·'):'—')+'</div><div class="mj">忌 '+(ji2.length?ji2.join('·'):'—')+'</div>';
       el.appendChild(mini);
     }
     if(state.index[k]){const mk=document.createElement('span');mk.className='mark';el.appendChild(mk);}
@@ -606,8 +750,9 @@ async function renderDetail(){
   const jq=l.getJieQi();if(jq)tags.push('<span class="tag jq">节气 · '+jq+'</span>');
   (l.getFestivals()||[]).forEach(f=>tags.push('<span class="tag fest">'+f+'</span>'));
   $('dTags').innerHTML=tags.join('');
-  $('dYi').textContent=joinItems(yiOf(l),12);
-  $('dJi').textContent=joinItems(jiOf(l),12);
+  $('dYi').innerHTML=chipsHtml(yiOf(l),12);
+  $('dJi').innerHTML=chipsHtml(jiOf(l),12);
+  $('dDo').innerHTML=todoHtml(yiOf(l),6);
   const data=await readDiary(state.selected);
   $('inTitle').value=data?data.title||'':'';
   $('inBody').value=data?data.body||'':'';
